@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { formatAadhaarGrouped } from "../api/labourService.js";
 
 export default function PreviewModal({ open, values, onBack, onConfirm, submitting }) {
   if (!open || !values) return null;
@@ -28,7 +29,7 @@ export default function PreviewModal({ open, values, onBack, onConfirm, submitti
     ["Labour ID", values.labourId],
     ["Name", values.name],
     ["Mobile", `${values.countryCode || ""} ${values.mobile || ""}`.trim()],
-    ["Aadhaar", values.aadhaar],
+    ["Aadhaar", formatAadhaarGrouped(values.aadhaar) || "—"],
     ["Email", values.email || "—"],
     ["Address", String(values.address || "").trim() || "—"],
     ["Date of birth", dobDisplay],

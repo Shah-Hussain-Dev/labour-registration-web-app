@@ -1,6 +1,7 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchLabourById,
+  formatAadhaarGrouped,
   normalizeMobileForApi,
   submitLabourRegistration,
 } from "../api/labourService.js";
@@ -30,6 +31,21 @@ const AYUSHMAN_RE = /^[\dA-Za-z\-]{3,50}$/;
 const NAME_MAX = 150;
 const ADDRESS_MAX = 500;
 
+/** Completed years from a valid YYYY-MM-DD on or before today; otherwise null. */
+function completedYearsFromDobIso(iso) {
+  const s = String(iso || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const d = new Date(`${s}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  if (d > today) return null;
+  let age = today.getFullYear() - d.getFullYear();
+  const m = today.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age -= 1;
+  return age;
+}
+
 function validateDob(iso) {
   if (!String(iso || "").trim()) return "Date of birth is required";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "Enter a valid date";
@@ -38,12 +54,26 @@ function validateDob(iso) {
   const today = new Date();
   today.setHours(23, 59, 59, 999);
   if (d > today) return "Date of birth cannot be in the future";
-  let age = today.getFullYear() - d.getFullYear();
-  const m = today.getMonth() - d.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age -= 1;
-  if (age < 10) return "Patient must be at least 10 years old";
-  if (age > 120) return "Please check the date of birth";
+  const age = completedYearsFromDobIso(iso);
+  if (age === null) return "Invalid date";
+  if (age < 18) return "Labour must be at least 18 years old";
   return "";
+}
+
+/** Live DOB feedback after a value is chosen (empty = no inline error). */
+function getDobSelectionError(iso) {
+  const s = String(iso || "").trim();
+  if (!s) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return "Enter a valid date";
+  const d = new Date(`${s}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "Invalid date";
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  if (d > today) return "Date of birth cannot be in the future";
+  const age = completedYearsFromDobIso(s);
+  if (age === null) return "Invalid date";
+  if (age < 18) return "Labour must be at least 18 years old";
+  return null;
 }
 
 function validateLabourForm(f) {
@@ -108,6 +138,71 @@ function isLabourFormComplete(f) {
   return Object.keys(validateLabourForm(f)).length === 0;
 }
 
+function parseFamilyCardLabel(label) {
+  const s = String(label || "").trim();
+  const m = s.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+  if (m) return { name: m[1].trim(), relation: m[2].trim() };
+  return { name: s || "Member", relation: "Family" };
+}
+
+function genderAbbrev(formGender) {
+  const g = String(formGender || "").trim().toLowerCase();
+  if (g === "male" || g === "m") return "M";
+  if (g === "female" || g === "f") return "F";
+  if (g === "other") return "O";
+  if (g === "prefer_not") return "—";
+  if (g) return g.charAt(0).toUpperCase();
+  return "—";
+}
+
+function resolveCardAgeYears(snapshot, apiYears) {
+  const fromDob = completedYearsFromDobIso(snapshot.dob);
+  if (fromDob !== null) return fromDob;
+  if (apiYears !== null && apiYears !== undefined && Number.isFinite(apiYears)) return apiYears;
+  return null;
+}
+
+function formatGenderAgeLine(snapshot, apiYears) {
+  const g = genderAbbrev(snapshot.gender);
+  const age = resolveCardAgeYears(snapshot, apiYears);
+  const agePart = age !== null ? `${age}Y` : "—";
+  return `${g} | ${agePart}`;
+}
+
+function formatAadhaarForCard(snapshot) {
+  return formatAadhaarGrouped(snapshot.aadhaar) || "—";
+}
+
+const MIN_MEMBER_REGISTER_AGE = 18;
+
+function memberMeetsMinAge(ageYears) {
+  return ageYears !== null && ageYears >= MIN_MEMBER_REGISTER_AGE;
+}
+
+function memberIneligibleLabel(ageYears) {
+  if (ageYears === null) {
+    return "Age not available — must be 18 or older to register.";
+  }
+  if (ageYears < MIN_MEMBER_REGISTER_AGE) {
+    return "Age must be 18 or older to register.";
+  }
+  return null;
+}
+
+function findFirstSelectableMember(main, mainApiAge, familyList) {
+  const mainAge = resolveCardAgeYears(main, mainApiAge);
+  if (memberMeetsMinAge(mainAge)) {
+    return { key: "main", formSlice: main };
+  }
+  for (const o of familyList) {
+    const a = resolveCardAgeYears(o.form, o.cardAgeYears ?? null);
+    if (memberMeetsMinAge(a)) {
+      return { key: `family:${o.familyRecordId}`, formSlice: o.form };
+    }
+  }
+  return null;
+}
+
 export default function LabourRegistrationForm({ atmId = "" }) {
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
@@ -128,6 +223,10 @@ export default function LabourRegistrationForm({ atmId = "" }) {
   const [successMsg, setSuccessMsg] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [barcodeScanOpen, setBarcodeScanOpen] = useState(false);
+  const [mainMemberForm, setMainMemberForm] = useState(null);
+  const [mainCardAgeYears, setMainCardAgeYears] = useState(null);
+  const [familyOptions, setFamilyOptions] = useState([]);
+  const [selectedMemberKey, setSelectedMemberKey] = useState("main");
 
   function updateField(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -137,6 +236,40 @@ export default function LabourRegistrationForm({ atmId = "" }) {
         delete next[name];
         return next;
       });
+    }
+  }
+
+  function onDobChange(value) {
+    setForm((prev) => ({ ...prev, dob: value }));
+    const live = getDobSelectionError(value);
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (live) next.dob = live;
+      else delete next.dob;
+      return next;
+    });
+  }
+
+  function selectMemberByKey(key) {
+    if (!mainMemberForm) return;
+    const regId = mainMemberForm.labourId;
+    setErrors({});
+    if (key === "main") {
+      const age = resolveCardAgeYears(mainMemberForm, mainCardAgeYears);
+      if (!memberMeetsMinAge(age)) return;
+      setSelectedMemberKey(key);
+      setForm({ ...emptyForm(), ...mainMemberForm, labourId: regId });
+      return;
+    }
+    const prefix = "family:";
+    if (key.startsWith(prefix)) {
+      const fid = key.slice(prefix.length);
+      const opt = familyOptions.find((o) => o.familyRecordId === fid);
+      if (!opt) return;
+      const age = resolveCardAgeYears(opt.form, opt.cardAgeYears ?? null);
+      if (!memberMeetsMinAge(age)) return;
+      setSelectedMemberKey(key);
+      setForm({ ...emptyForm(), ...opt.form, labourId: regId });
     }
   }
 
@@ -151,16 +284,36 @@ export default function LabourRegistrationForm({ atmId = "" }) {
     }
     setLoadingLabour(true);
     try {
-      const data = await fetchLabourById(id, { atmId });
-      setForm({
-        ...emptyForm(),
-        ...data,
-        labourId: data.labourId || id,
-      });
+      const { main, mainCardAgeYears: mainAge, familyOptions: familyList } = await fetchLabourById(
+        id,
+        { atmId },
+      );
+      setMainMemberForm(main);
+      setMainCardAgeYears(mainAge ?? null);
+      setFamilyOptions(familyList);
+      const pick = findFirstSelectableMember(main, mainAge ?? null, familyList);
+      if (pick) {
+        setSelectedMemberKey(pick.key);
+        setForm({
+          ...emptyForm(),
+          ...pick.formSlice,
+          labourId: main.labourId || id,
+        });
+      } else {
+        setSelectedMemberKey("");
+        setForm({
+          ...emptyForm(),
+          labourId: main.labourId || id,
+        });
+      }
       setErrors({});
       setLoaded(true);
     } catch (e) {
       setLoaded(false);
+      setMainMemberForm(null);
+      setMainCardAgeYears(null);
+      setFamilyOptions([]);
+      setSelectedMemberKey("");
       setLoadError(e.message || "Something went wrong.");
     } finally {
       setLoadingLabour(false);
@@ -169,7 +322,28 @@ export default function LabourRegistrationForm({ atmId = "" }) {
 
   function onFormSubmit(e) {
     e.preventDefault();
-    if (!loaded) return;
+    if (!loaded || !mainMemberForm) return;
+    let selectedMemberEligible = false;
+    if (selectedMemberKey === "main") {
+      selectedMemberEligible = memberMeetsMinAge(
+        resolveCardAgeYears(mainMemberForm, mainCardAgeYears),
+      );
+    } else if (selectedMemberKey.startsWith("family:")) {
+      const fid = selectedMemberKey.slice("family:".length);
+      const opt = familyOptions.find((o) => o.familyRecordId === fid);
+      if (opt) {
+        selectedMemberEligible = memberMeetsMinAge(
+          resolveCardAgeYears(opt.form, opt.cardAgeYears ?? null),
+        );
+      }
+    }
+    if (!selectedMemberEligible) {
+      document.getElementById("member-cards-anchor")?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      return;
+    }
     const nextErrors = validateLabourForm(form);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -220,6 +394,10 @@ export default function LabourRegistrationForm({ atmId = "" }) {
       setLoaded(false);
       setForm(emptyForm());
       setErrors({});
+      setMainMemberForm(null);
+      setMainCardAgeYears(null);
+      setFamilyOptions([]);
+      setSelectedMemberKey("main");
     } catch (e) {
       setPreviewOpen(false);
       setPreviewValues(null);
@@ -230,7 +408,43 @@ export default function LabourRegistrationForm({ atmId = "" }) {
   }
 
   const labourIdTrimmed = String(form.labourId || "").trim();
-  const canReviewSubmit = loaded && isLabourFormComplete(form);
+
+  const memberCards = useMemo(() => {
+    if (!mainMemberForm) return [];
+    const mainAge = resolveCardAgeYears(mainMemberForm, mainCardAgeYears);
+    const list = [
+      {
+        key: "main",
+        name: String(mainMemberForm.name || "").trim() || "—",
+        role: "Main Member",
+        genderAgeLine: formatGenderAgeLine(mainMemberForm, mainCardAgeYears),
+        aadhaarLine: formatAadhaarForCard(mainMemberForm),
+        ageYears: mainAge,
+        selectable: memberMeetsMinAge(mainAge),
+        ineligibleLabel: memberIneligibleLabel(mainAge),
+      },
+    ];
+    for (const o of familyOptions) {
+      const { name, relation } = parseFamilyCardLabel(o.label);
+      const age = resolveCardAgeYears(o.form, o.cardAgeYears ?? null);
+      list.push({
+        key: `family:${o.familyRecordId}`,
+        name,
+        role: relation,
+        genderAgeLine: formatGenderAgeLine(o.form, o.cardAgeYears ?? null),
+        aadhaarLine: formatAadhaarForCard(o.form),
+        ageYears: age,
+        selectable: memberMeetsMinAge(age),
+        ineligibleLabel: memberIneligibleLabel(age),
+      });
+    }
+    return list;
+  }, [mainMemberForm, mainCardAgeYears, familyOptions]);
+
+  const selectedCard = memberCards.find((c) => c.key === selectedMemberKey);
+  const hasSelectableMember = memberCards.some((c) => c.selectable);
+  const canReviewSubmit =
+    loaded && Boolean(selectedCard?.selectable) && isLabourFormComplete(form);
 
   return (
     <>
@@ -304,6 +518,78 @@ export default function LabourRegistrationForm({ atmId = "" }) {
 
         {loaded ? (
           <>
+            <section
+              id="member-cards-anchor"
+              className="member-cards-section"
+              aria-label="Select member to register"
+            >
+              <span className="field-label" id="member-cards-label">
+                {/* Who is registering? <span className="req">*</span> */}
+              </span>
+              <p className="field-hint field-hint--tight">
+                Only members aged {MIN_MEMBER_REGISTER_AGE}+ can be selected. The form updates for the
+                selected person.
+              </p>
+              {!hasSelectableMember && memberCards.length > 0 ? (
+                <p className="member-cards-section__alert" role="alert">
+                  No member meets the minimum age ({MIN_MEMBER_REGISTER_AGE}+). Registration cannot
+                  continue for this household.
+                </p>
+              ) : null}
+              <div
+                className="member-cards"
+                role="radiogroup"
+                aria-labelledby="member-cards-label"
+              >
+                {memberCards.map((card) => {
+                  const inputId = `reg-member-${card.key.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+                  const selected = card.selectable && selectedMemberKey === card.key;
+                  return (
+                    <label
+                      key={card.key}
+                      htmlFor={inputId}
+                      className={`member-card${selected ? " member-card--selected" : ""}${card.selectable ? "" : " member-card--disabled"}`}
+                    >
+                      <input
+                        id={inputId}
+                        type="radio"
+                        name="registerMember"
+                        className="member-card__radio"
+                        value={card.key}
+                        checked={selected}
+                        disabled={!card.selectable}
+                        onChange={() => selectMemberByKey(card.key)}
+                      />
+                      <span className="member-card__body">
+                        <span className="member-card__top-row">
+                          <span className="member-card__name">{card.name}</span>
+                          <span
+                            className="member-card__meta-row"
+                            aria-label={`${card.genderAgeLine}, ${card.role}`}
+                          >
+                            <span className="member-card__pill">{card.genderAgeLine}</span>
+                            <span className="member-card__meta-sep" aria-hidden>
+                              ·
+                            </span>
+                            <span className="member-card__relation">{card.role}</span>
+                          </span>
+                        </span>
+                        <div className="member-card__aadhaar-block">
+                          <span className="member-card__aadhaar-label">Aadhaar</span>
+                          <span className="member-card__aadhaar" aria-label="Aadhaar number">
+                            {card.aadhaarLine}
+                          </span>
+                        </div>
+                        {!card.selectable && card.ineligibleLabel ? (
+                          <p className="member-card__ineligible">{card.ineligibleLabel}</p>
+                        ) : null}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+
             <div className="labour-form">
               <div className="form-grid">
                 <div className="field">
@@ -345,7 +631,12 @@ export default function LabourRegistrationForm({ atmId = "" }) {
                       inputMode="numeric"
                       aria-invalid={errors.mobile ? "true" : "false"}
                       value={form.mobile}
-                      onChange={(e) => updateField("mobile", e.target.value)}
+                      onChange={(e) =>
+                        updateField(
+                          "mobile",
+                          e.target.value.replace(/\D/g, "").slice(0, 15),
+                        )
+                      }
                     />
                   </div>
                   {errors.countryCode ? <p className="field-error">{errors.countryCode}</p> : null}
@@ -362,9 +653,15 @@ export default function LabourRegistrationForm({ atmId = "" }) {
                     inputMode="numeric"
                     className="input"
                     autoComplete="off"
-                    maxLength={12}
-                    value={form.aadhaar}
-                    onChange={(e) => updateField("aadhaar", e.target.value)}
+                    maxLength={14}
+                    placeholder="4444-1234-1232"
+                    value={formatAadhaarGrouped(form.aadhaar)}
+                    onChange={(e) =>
+                      updateField(
+                        "aadhaar",
+                        e.target.value.replace(/\D/g, "").slice(0, 12),
+                      )
+                    }
                     aria-invalid={errors.aadhaar ? "true" : "false"}
                   />
                   {errors.aadhaar ? <p className="field-error">{errors.aadhaar}</p> : null}
@@ -415,10 +712,15 @@ export default function LabourRegistrationForm({ atmId = "" }) {
                     type="date"
                     className="input"
                     value={form.dob}
-                    onChange={(e) => updateField("dob", e.target.value)}
+                    onChange={(e) => onDobChange(e.target.value)}
                     aria-invalid={errors.dob ? "true" : "false"}
+                    aria-describedby={errors.dob ? "dob-err" : undefined}
                   />
-                  {errors.dob ? <p className="field-error">{errors.dob}</p> : null}
+                  {errors.dob ? (
+                    <p id="dob-err" className="field-error">
+                      {errors.dob}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="field">
@@ -527,7 +829,11 @@ export default function LabourRegistrationForm({ atmId = "" }) {
                 title={
                   canReviewSubmit
                     ? undefined
-                    : "Fill every required field (red *), including a valid barcode."
+                    : !hasSelectableMember
+                      ? `Select a member aged ${MIN_MEMBER_REGISTER_AGE}+ (none available for this record).`
+                      : !selectedCard?.selectable
+                        ? `Select a member aged ${MIN_MEMBER_REGISTER_AGE}+.`
+                        : "Fill every required field (red *), including a valid barcode."
                 }
               >
                 Review & submit

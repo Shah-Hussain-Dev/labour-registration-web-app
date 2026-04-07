@@ -1,7 +1,7 @@
 :root {
-  /* Brand: aligned with public/favicon.svg (violet + cyan) + health green */
-  --yh-primary: #5e3fd9;
-  --yh-primary-dark: #4a32ae;
+  /* Brand: blue + cyan accent + health green */
+  --yh-primary: #1a6fd4;
+  --yh-primary-dark: #155bb3;
   --yh-accent: #2d9fdb;
   --yh-accent-dark: #1a7eb8;
   --yh-secondary: #7cbf45;
@@ -9,10 +9,10 @@
   --yh-text: #141622;
   --yh-muted: #5c6378;
   --yh-border: #e2e6f0;
-  --yh-bg: #f4f5fb;
-  --yh-bg-accent: #ebe9ff;
+  --yh-bg: #f4f7fb;
+  --yh-bg-accent: #e8f4fc;
   --yh-card: #ffffff;
-  --yh-header-bg: linear-gradient(180deg, #faf9ff 0%, #ffffff 72%);
+  --yh-header-bg: linear-gradient(180deg, #f5f9fc 0%, #ffffff 72%);
   --yh-danger: #c62828;
   --yh-focus-ring: color-mix(in srgb, var(--yh-primary) 38%, transparent);
   --yh-tap-min: 44px;
@@ -525,6 +525,210 @@ body {
   flex-shrink: 0;
 }
 
+.check--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.member-cards-section {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--yh-border);
+}
+
+.member-cards-section__alert {
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--yh-danger);
+  background: color-mix(in srgb, var(--yh-danger) 8%, #fff);
+  border: 1px solid color-mix(in srgb, var(--yh-danger) 22%, var(--yh-border));
+  border-radius: 10px;
+}
+
+.member-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+
+.member-card {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--yh-border);
+  border-radius: 10px;
+  cursor: pointer;
+  background: #fff;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+  margin: 0;
+}
+
+.member-card:hover:not(.member-card--disabled) {
+  border-color: color-mix(in srgb, var(--yh-primary) 45%, var(--yh-border));
+}
+
+.member-card:has(.member-card__radio:focus-visible):not(.member-card--disabled) {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--yh-focus-ring);
+}
+
+.member-card--selected {
+  border-color: var(--yh-primary);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--yh-primary) 10%, #fff) 0%,
+    color-mix(in srgb, var(--yh-accent) 7%, #fff) 100%
+  );
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--yh-primary) 30%, transparent);
+}
+
+.member-card--disabled {
+  opacity: 0.88;
+  cursor: not-allowed;
+  background: #f8fafc;
+}
+
+.member-card--disabled:hover {
+  border-color: var(--yh-border);
+}
+
+.member-card--disabled .member-card__radio {
+  cursor: not-allowed;
+}
+
+.member-card__radio {
+  margin-top: 0.12rem;
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--yh-primary);
+  cursor: pointer;
+}
+
+.member-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+  text-align: left;
+}
+
+.member-card__top-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.6rem;
+  width: 100%;
+  margin-bottom: 0.35rem;
+}
+
+.member-card__name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--yh-text);
+  line-height: 1.3;
+  word-break: break-word;
+  flex: 1 1 6.5rem;
+  min-width: 0;
+}
+
+.member-card__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem 0.35rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  text-align: right;
+}
+
+.member-card__meta-sep {
+  color: var(--yh-muted);
+  font-weight: 700;
+  font-size: 0.75rem;
+  line-height: 1;
+  user-select: none;
+}
+
+.member-card__relation {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--yh-muted);
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+}
+
+.member-card--selected .member-card__relation {
+  color: color-mix(in srgb, var(--yh-primary-dark) 70%, var(--yh-muted));
+}
+
+.member-card__pill {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--yh-primary-dark);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--yh-primary) 12%, #fff);
+  border: 1px solid color-mix(in srgb, var(--yh-primary) 22%, transparent);
+}
+
+.member-card--selected .member-card__pill {
+  background: color-mix(in srgb, var(--yh-primary) 16%, #fff);
+  border-color: color-mix(in srgb, var(--yh-primary) 35%, transparent);
+}
+
+.member-card__aadhaar-block {
+  margin-top: 0.15rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid color-mix(in srgb, var(--yh-border) 85%, var(--yh-primary));
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.member-card__aadhaar-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--yh-muted);
+}
+
+.member-card__aadhaar {
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--yh-text);
+  letter-spacing: 0.04em;
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+.member-card--disabled .member-card__aadhaar {
+  color: var(--yh-muted);
+}
+
+.member-card__ineligible {
+  margin: 0.4rem 0 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--yh-danger);
+}
+
 .form-footer {
   display: flex;
   justify-content: flex-end;
@@ -551,7 +755,7 @@ body {
     min-height: var(--yh-tap-min);
     font-size: 1rem;
     border-radius: 12px;
-    background-image: linear-gradient(to right, #0acffe 0%, #495aff 100%);
+    background-image: linear-gradient(to right, var(--yh-accent) 0%, var(--yh-primary) 100%);
   }
 }
 
@@ -622,7 +826,7 @@ body {
 }
 
 .btn-primary {
-  background-image: linear-gradient(to right, #0acffe 0%, #495aff 100%);
+  background-image: linear-gradient(to right, var(--yh-accent) 0%, var(--yh-primary) 100%);
   color: #fff;
   font-weight: 600;
   box-shadow:
@@ -647,7 +851,7 @@ body {
 
 /* Load details — cyan/teal accent (distinct from primary purple + review submit) */
 .btn-load-details {
-  background-image: linear-gradient(to right, #0acffe 0%, #495aff 100%);
+  background-image: linear-gradient(to right, var(--yh-accent) 0%, var(--yh-primary) 100%);
   color: #fff;
 
   font-weight: 600;

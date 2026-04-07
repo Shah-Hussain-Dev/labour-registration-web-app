@@ -59,6 +59,19 @@ export function normalizeMobileForApi(countryCode, mobile) {
   return raw;
 }
 
+/** Display Aadhaar as 4444-4444-4444; storage stays 12 digits only. */
+export function formatAadhaarGrouped(raw) {
+  const d = String(raw || "").replace(/\D/g, "").slice(0, 12);
+  if (!d) return "";
+  const g1 = d.slice(0, 4);
+  const g2 = d.slice(4, 8);
+  const g3 = d.slice(8, 12);
+  const parts = [g1];
+  if (g2.length > 0) parts.push(g2);
+  if (g3.length > 0) parts.push(g3);
+  return parts.join("-");
+}
+
 function normalizeFromLabourApiRow(raw, fallbackLabRegNo) {
   const labourId = String(
     raw.LabRegNo ?? raw.lab_reg_no ?? raw.labour_id ?? raw.LabourId ?? fallbackLabRegNo ?? "",
@@ -103,6 +116,37 @@ function normalizeFromLabourApiRow(raw, fallbackLabRegNo) {
     ).trim(),
     mappedBarcode: "",
   };
+}
+
+/** Optional age from API when DOB is missing (e.g. Family.Age). */
+function parseOptionalAgeYears(value) {
+  if (value === null || value === undefined) return null;
+  const s = String(value).trim();
+  if (s === "") return null;
+  const n = Number.parseInt(s, 10);
+  if (!Number.isFinite(n) || n < 0 || n > 150) return null;
+  return n;
+}
+
+function familyMemberSelectLabel(raw) {
+  const name = String(raw.LabourName ?? raw.Name ?? raw.name ?? "").trim() || "Member";
+  const rel = String(raw.MemberRelation ?? raw.Relation ?? raw.member_relation ?? "").trim();
+  return rel ? `${name} (${rel})` : name;
+}
+
+/** Map a Family[] item to the same form shape as the main labour row. */
+function normalizeFromFamilyApiRow(raw, fallbackLabRegNo) {
+  const pseudo = {
+    ...raw,
+    LabourName: raw.LabourName ?? raw.Name ?? raw.name ?? "",
+    MobileNo: raw.Mobileno ?? raw.MobileNo ?? raw.mobile ?? "",
+    LabRegNo: raw.LabRegNo ?? raw.lab_reg_no ?? fallbackLabRegNo ?? "",
+    Gender: raw.Gender ?? raw.gender ?? "",
+    Dob: raw.Dob ?? raw.dob ?? raw.date_of_birth ?? "",
+    AadharNo: raw.AadharNo ?? raw.aadhaar ?? raw.adhaar_number ?? "",
+    Address: raw.Address ?? raw.address ?? "",
+  };
+  return normalizeFromLabourApiRow(pseudo, fallbackLabRegNo);
 }
 
 export function buildRegisterPatientBody(payload) {
@@ -165,16 +209,38 @@ export async function fetchLabourById(labourId, options = {}) {
   const data = await postJson("/v1/camp/uk-bocw/get-labour-data", { lab_reg_no: id });
   assertGetLabourOk(data);
 
-  const row = data.data;
-  if (!row || typeof row !== "object") {
+  const payload = data.data;
+  if (!payload || typeof payload !== "object") {
     throw new Error("No labour data returned.");
   }
+
+  const labourRow = payload.Labour ?? payload;
+  if (!labourRow || typeof labourRow !== "object") {
+    throw new Error("No labour data returned.");
+  }
+
+  const familyRaw = Array.isArray(payload.Family) ? payload.Family : [];
 
   if (import.meta.env.DEV) {
     console.info("[YoloHealth get-labour-data]", { lab_reg_no: id, atmId });
   }
 
-  return normalizeFromLabourApiRow(row, id);
+  const main = normalizeFromLabourApiRow(labourRow, id);
+  const regNo = main.labourId || id;
+  const mainCardAgeYears = parseOptionalAgeYears(labourRow.Age ?? labourRow.age);
+  const familyOptions = familyRaw
+    .map((m) => {
+      const familyRecordId = String(m.FamilyRecordId ?? m.family_record_id ?? "").trim();
+      return {
+        familyRecordId,
+        label: familyMemberSelectLabel(m),
+        form: normalizeFromFamilyApiRow(m, regNo),
+        cardAgeYears: parseOptionalAgeYears(m.Age ?? m.age),
+      };
+    })
+    .filter((o) => o.familyRecordId);
+
+  return { main, mainCardAgeYears, familyOptions };
 }
 
 export async function submitLabourRegistration(payload) {
