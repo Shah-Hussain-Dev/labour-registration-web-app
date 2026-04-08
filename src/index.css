@@ -121,27 +121,65 @@ body {
   min-width: 0;
 }
 
+.site-header__logos {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: clamp(0.35rem, 1.5vw + 0.25rem, 0.75rem);
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+/* Pair: YoloHealth scales with viewport beside the circular mark */
+.site-header__logos .site-header__logo--full {
+  max-width: min(14rem, calc(100vw - 8rem));
+}
+
+@media (min-width: 720px) {
+  .site-header__logos .site-header__logo--full {
+    max-width: min(15rem, calc(100vw - 10rem));
+  }
+}
+
 .site-header__logo {
   flex-shrink: 0;
   object-fit: contain;
-  border-radius: 12px;
-  box-shadow:
-    0 2px 10px color-mix(in srgb, var(--yh-primary) 22%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--yh-primary) 10%, white);
+
+
 }
 
-/* Full logo: tall enough to read; width follows aspect ratio */
+/* Full logo: fluid height from viewport; width follows intrinsic ratio */
 .site-header__logo--full {
   width: auto;
-  height: clamp(46px, 11vw, 58px);
-  max-width: min(200px, 48vw);
+  height: clamp(2.5rem, 4vmin + 5vw, 3.75rem);
+  max-width: min(15rem, 90vw);
   border-radius: 14px;
 }
 
 @media (min-width: 720px) {
   .site-header__logo--full {
-    height: clamp(52px, 7vw, 64px);
-    max-width: 220px;
+    height: clamp(2.75rem, 3.5vmin + 3vw, 4rem);
+    max-width: min(17.5rem, 40vw);
+  }
+}
+
+/* Circular welfare-board mark: scales with vmin/vw; ring stays visible on light headers */
+.site-header__logo--welfare {
+  width: auto;
+  height: clamp(2.5rem, 5vmin + 4vw, 3.25rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: contain;
+  background: color-mix(in srgb, white 88%, var(--yh-header-bg));
+  box-shadow:
+    0 2px 10px color-mix(in srgb, var(--yh-primary) 20%, transparent),
+    0 0 0 1.5px color-mix(in srgb, var(--yh-primary) 14%, transparent);
+}
+
+@media (min-width: 720px) {
+  .site-header__logo--welfare {
+    height: clamp(2.75rem, 4vmin + 2.5vw, 3.5rem);
   }
 }
 
@@ -223,23 +261,49 @@ body {
 }
 
 @media (max-width: 719px) {
+  .site-header {
+    padding-left: max(0.75rem, var(--safe-left));
+    padding-right: max(0.75rem, var(--safe-right));
+  }
+
   .site-header__inner {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 0.65rem;
     text-align: center;
   }
 
   .site-header__left {
+    flex: none;
     width: 100%;
+    min-width: 0;
     justify-content: center;
   }
 
   .site-header__brand-block {
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: center;
     width: 100%;
+    gap: 0.5rem;
+  }
+
+  .site-header__logos {
+    justify-content: center;
+    width: 100%;
+    max-width: min(22rem, 100%);
+    gap: clamp(0.35rem, 3.5vmin, 0.65rem);
+  }
+
+  /* Side-by-side on one row when space allows; wrap gracefully on very narrow screens */
+  .site-header__logos .site-header__logo--welfare {
+    height: clamp(2.5rem, 14vmin, 3.25rem);
+  }
+
+  .site-header__logos .site-header__logo--full {
+    height: clamp(2.125rem, 11vmin, 2.875rem);
+    max-width: min(12.5rem, calc(100% - 4rem));
   }
 
   .site-header__titles {
@@ -254,8 +318,11 @@ body {
 
   .site-header__actions {
     width: 100%;
+    flex: none;
+    min-width: 0;
     margin-left: 0;
     justify-content: center;
+    gap: 0.4rem 0.5rem;
   }
 
   .atm-id-display {

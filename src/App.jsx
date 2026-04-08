@@ -1,11 +1,9 @@
 import { useCallback, useState } from "react";
 import AtmIdModal from "./components/AtmIdModal.jsx";
 import logoUrl from "./assets/logo.png";
+import welfareBoardLogoUrl from "./assets/w-logo.png";
 import LabourRegistrationForm from "./components/LabourRegistrationForm.jsx";
 import { ATM_ID_STORAGE_KEY, normalizeAtmId } from "./constants/storage.js";
-
-/** Full brand mark in header (high-res from your icon set) */
-const HEADER_LOGO_SRC = logoUrl;
 
 function readStoredAtmId() {
   if (typeof window === "undefined") return "";
@@ -40,14 +38,25 @@ export default function App() {
           <div className="site-header__inner">
             <div className="site-header__left">
               <div className="site-header__brand-block">
+                <div className="site-header__logos">
                 <img
-                  src={HEADER_LOGO_SRC}
-                  alt=""
-                  // className="site-header__logo site-header__logo--full"
-                  width={150}
-                  // height={192}
-                  // decoding="async"
-                />
+                    src={logoUrl}
+                    alt="YoloHealth"
+                    className="site-header__logo site-header__logo--full"
+                    width={200}
+                    height={70}
+                    decoding="async"
+                  />
+                  <img
+                    src={welfareBoardLogoUrl}
+                    alt="Uttarakhand Building and Other Construction Workers Welfare Board"
+                    className="site-header__logo site-header__logo--welfare"
+                    width={120}
+                    height={120}
+                    decoding="async"
+                  />
+                
+                </div>
                 {/* <div className="site-header__titles">
                   <span className="site-header__brand">YoloHealth</span>
                   <span className="site-header__tag">Labour registration</span>
