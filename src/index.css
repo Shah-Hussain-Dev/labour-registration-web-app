@@ -131,6 +131,90 @@ body {
   flex-shrink: 1;
 }
 
+/* Grid: seal + copy share one row; align-items centers text block with the circular mark */
+.site-header__board-mark {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0.2rem;
+  min-width: 0;
+  max-width: 100%;
+  width: max-content;
+}
+
+.site-header__board-texts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.2rem;
+  min-width: 0;
+  max-width: min(40ch, 100%);
+}
+
+.site-header__board-name-department {
+  font-size: clamp(0.6875rem, 0.45rem + 0.65vw, 0.8125rem);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: #3cb878;
+  text-align: left;
+}
+
+.site-header__board-name {
+  font-size: clamp(0.8125rem, 0.35rem + 2vw, 1.0625rem);
+  font-weight: 600;
+  line-height: 1.28;
+  letter-spacing: -0.015em;
+  color: var(--yh-text);
+  text-align: left;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (min-width: 720px) {
+  .site-header__board-name {
+    font-size: clamp(0.875rem, 0.45rem + 0.85vw, 1.0625rem);
+    line-height: 1.3;
+  }
+
+  .site-header__board-name-department {
+    font-size: clamp(0.75rem, 0.4rem + 0.55vw, 0.875rem);
+  }
+
+  .site-header__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: clamp(1rem, 2.5vw, 1.75rem);
+    row-gap: 0.5rem;
+  }
+
+  .site-header__left {
+    min-width: 0;
+    justify-content: flex-start;
+  }
+
+  .site-header__actions {
+    margin-left: 0;
+    justify-self: end;
+  }
+
+  .site-header__board-mark {
+    width: auto;
+    max-width: min(100%, 46rem);
+  }
+
+  .site-header__board-texts {
+    max-width: min(38ch, 100%);
+  }
+
+  .atm-id-display {
+    max-width: min(260px, 32vw);
+  }
+}
+
 /* Pair: YoloHealth scales with viewport beside the circular mark */
 .site-header__logos .site-header__logo--full {
   max-width: min(14rem, calc(100vw - 8rem));
@@ -144,9 +228,8 @@ body {
 
 .site-header__logo {
   flex-shrink: 0;
+  display: block;
   object-fit: contain;
-
-
 }
 
 /* Full logo: fluid height from viewport; width follows intrinsic ratio */
@@ -179,7 +262,7 @@ body {
 
 @media (min-width: 720px) {
   .site-header__logo--welfare {
-    height: clamp(2.75rem, 4vmin + 2.5vw, 3.5rem);
+    height: clamp(3rem, 4vmin + 2.25vw, 3.75rem);
   }
 }
 
@@ -292,13 +375,49 @@ body {
   .site-header__logos {
     justify-content: center;
     width: 100%;
-    max-width: min(22rem, 100%);
+    max-width: 100%;
     gap: clamp(0.35rem, 3.5vmin, 0.65rem);
   }
 
-  /* Side-by-side on one row when space allows; wrap gracefully on very narrow screens */
+  /* Stack: seal, then centered copy — avoids text hugging the right edge */
+  .site-header__board-mark {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 100%;
+    width: 100%;
+    gap: 0.45rem;
+  }
+
+  .site-header__board-texts {
+    align-items: center;
+    flex: none;
+    width: 100%;
+    max-width: 22rem;
+    gap: 0.25rem;
+  }
+
+  .site-header__board-name-department {
+    font-size: clamp(0.625rem, 2.4vw + 0.3rem, 0.75rem);
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: center;
+    width: 100%;
+    max-width: 100%;
+    text-wrap: balance;
+  }
+
+  .site-header__board-name {
+    text-align: center;
+    flex: none;
+    max-width: 100%;
+    width: 100%;
+    text-wrap: balance;
+  }
+
+  /* Larger welfare mark on phones */
   .site-header__logos .site-header__logo--welfare {
-    height: clamp(2.5rem, 14vmin, 3.25rem);
+    height: clamp(3.25rem, 20vmin, 4.5rem);
   }
 
   .site-header__logos .site-header__logo--full {
@@ -398,6 +517,40 @@ body {
 .form-card__atm strong {
   color: var(--yh-text);
   font-weight: 700;
+}
+
+.powered-by {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem 0.6rem;
+  max-width: 56rem;
+  margin: 1.25rem auto 0;
+  padding: 0.5rem 0.75rem;
+}
+
+.powered-by__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--yh-muted);
+  line-height: 1.2;
+}
+
+.powered-by__logo {
+  height: clamp(1.625rem, 3.5vmin + 2.25vw, 2.125rem);
+  width: auto;
+  max-width: min(9.5rem, 48vw);
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+}
+
+@media (min-width: 720px) {
+  .powered-by__logo {
+    height: clamp(1.75rem, 2.5vmin + 1vw, 2.25rem);
+    max-width: min(10.5rem, 28vw);
+  }
 }
 
 .banner {

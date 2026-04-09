@@ -5,6 +5,7 @@ import {
   normalizeMobileForApi,
   submitLabourRegistration,
 } from "../api/labourService.js";
+import yoloLogoUrl from "../assets/logo.png";
 import PreviewModal from "./PreviewModal.jsx";
 
 const BarcodeScanModal = lazy(() => import("./BarcodeScanModal.jsx"));
@@ -842,6 +843,18 @@ export default function LabourRegistrationForm({ atmId = "" }) {
           </>
         ) : null}
       </form>
+
+      <div className="powered-by" aria-label="Platform credit">
+        <span className="powered-by__label">Powered by</span>
+        <img
+          src={yoloLogoUrl}
+          alt="YoloHealth"
+          className="powered-by__logo"
+          width={200}
+          height={70}
+          decoding="async"
+        />
+      </div>
 
       {barcodeScanOpen ? (
         <Suspense fallback={null}>
