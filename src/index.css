@@ -1390,3 +1390,384 @@ body {
   margin-top: 1rem;
   min-height: var(--yh-tap-min);
 }
+
+/* Labour live photo: form summary + modal busy overlay */
+.geo-photo-field {
+  margin-top: 0.25rem;
+}
+
+.labour-live-photo-block {
+  margin-top: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Portrait 3:4 geo composite preview (matches output JPEG) */
+.labour-live-photo-block__thumb-wrap {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: min(100%, calc(360px * 3 / 4));
+  max-width: 100%;
+  margin-inline: 0;
+  margin-right: auto;
+  aspect-ratio: 3 / 4;
+  max-height: 360px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--yh-border);
+  background: #000;
+  line-height: 0;
+  box-shadow: 0 2px 14px rgba(20, 22, 34, 0.08);
+}
+
+.labour-live-photo-block__thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+}
+
+.labour-live-photo-block__loc {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--yh-text);
+}
+
+.labour-live-photo-block__loc-label {
+  display: block;
+  font-weight: 700;
+  color: var(--yh-text);
+  margin-bottom: 0.25rem;
+}
+
+.labour-live-photo-block__addr {
+  display: block;
+  color: var(--yh-muted);
+  word-break: break-word;
+}
+
+.labour-live-photo-block__actions {
+  margin-top: 0.65rem;
+  max-width: 100%;
+  align-items: center;
+}
+
+.labour-live-photo-block__download-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--yh-tap-min);
+  padding: 0.35rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--yh-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.labour-live-photo-block__download-link:hover {
+  color: var(--yh-primary-hover, var(--yh-primary));
+  text-decoration-thickness: 2px;
+}
+
+.labour-live-photo-block__download-link:focus-visible {
+  outline: 2px solid var(--yh-primary);
+  outline-offset: 2px;
+}
+
+.labour-live-photo-block__download-link[aria-disabled="true"] {
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+/* Labour live photo — full-screen camera UI */
+.cam-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  touch-action: manipulation;
+}
+
+.cam-fullscreen__viewport {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.cam-fullscreen__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  background: #000;
+}
+
+.cam-fullscreen__busy {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  text-align: center;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(8, 10, 14, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.cam-fullscreen__busy-text {
+  max-width: 16rem;
+  line-height: 1.4;
+}
+
+.cam-fullscreen__spinner {
+  border-color: rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+  width: 2rem;
+  height: 2rem;
+}
+
+.cam-fullscreen__top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: max(0.5rem, var(--safe-top)) max(0.65rem, var(--safe-right)) 0.75rem
+    max(0.65rem, var(--safe-left));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.35) 70%, transparent 100%);
+  pointer-events: none;
+}
+
+.cam-fullscreen__top > * {
+  pointer-events: auto;
+}
+
+.cam-fullscreen__close {
+  flex-shrink: 0;
+  width: var(--yh-tap-min);
+  height: var(--yh-tap-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.65rem;
+  line-height: 1;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.cam-fullscreen__close:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.cam-fullscreen__close:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cam-fullscreen__close:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.cam-fullscreen__title-block {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  padding-top: 0.15rem;
+}
+
+.cam-fullscreen__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+}
+
+.cam-fullscreen__subtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.88);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.cam-fullscreen__top-spacer {
+  flex-shrink: 0;
+  width: var(--yh-tap-min);
+  height: var(--yh-tap-min);
+}
+
+.cam-fullscreen__error {
+  position: absolute;
+  left: max(0.75rem, var(--safe-left));
+  right: max(0.75rem, var(--safe-right));
+  top: max(0.65rem, var(--safe-top));
+  z-index: 2;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #fff;
+  text-align: center;
+  background: rgba(198, 40, 40, 0.92);
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.cam-fullscreen__bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  padding: 1.25rem max(1rem, var(--safe-left)) max(1.35rem, var(--safe-bottom)) max(1rem, var(--safe-right));
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.4) 55%, transparent 100%);
+  pointer-events: none;
+}
+
+.cam-fullscreen__bottom-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.cam-fullscreen__bottom-row > * {
+  pointer-events: auto;
+}
+
+.cam-fullscreen__bottom-slot {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--yh-tap-min);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.cam-fullscreen__bottom-slot--end {
+  justify-content: flex-end;
+}
+
+.cam-fullscreen__shutter {
+  width: 4.75rem;
+  height: 4.75rem;
+  padding: 5px;
+  border: 4px solid rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 28px rgba(0, 0, 0, 0.45);
+  transition: transform 0.08s ease;
+}
+
+.cam-fullscreen__shutter:hover:not(:disabled) {
+  border-color: #fff;
+}
+
+.cam-fullscreen__shutter:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.cam-fullscreen__shutter:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cam-fullscreen__shutter:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 4px;
+}
+
+.cam-fullscreen__shutter-inner {
+  width: 3.35rem;
+  height: 3.35rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+@media (min-width: 768px) {
+  .cam-fullscreen__shutter {
+    width: 5.25rem;
+    height: 5.25rem;
+  }
+
+  .cam-fullscreen__shutter-inner {
+    width: 3.65rem;
+    height: 3.65rem;
+  }
+}
+
+.preview-row--photo {
+  grid-template-columns: 1fr;
+}
+
+.preview-row--photo dt {
+  margin-bottom: 0.25rem;
+}
+
+.preview-row--photo dd {
+  margin: 0;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: min(100%, calc(360px * 3 / 4));
+  max-width: 100%;
+  margin-inline: 0;
+  margin-right: auto;
+  aspect-ratio: 3 / 4;
+  max-height: 360px;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--yh-border);
+  background: #000;
+}
+
+.preview-geo-thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  border-radius: 14px;
+}

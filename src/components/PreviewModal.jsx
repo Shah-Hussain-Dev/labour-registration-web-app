@@ -56,6 +56,18 @@ export default function PreviewModal({ open, values, onBack, onConfirm, submitti
               <dd>{val}</dd>
             </div>
           ))}
+          {values.geoTaggedPreviewUrl ? (
+            <div className="preview-row preview-row--photo">
+              <dt>Labour live photo</dt>
+              <dd>
+                <img
+                  src={values.geoTaggedPreviewUrl}
+                  alt="Labour live photo attached to this registration"
+                  className="preview-geo-thumb"
+                />
+              </dd>
+            </div>
+          ) : null}
         </dl>
         <div className="modal-actions">
           <button type="button" className="btn btn-ghost" onClick={onBack} disabled={submitting}>

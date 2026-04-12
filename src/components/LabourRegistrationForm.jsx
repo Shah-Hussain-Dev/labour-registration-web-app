@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchLabourById,
   formatAadhaarGrouped,
@@ -9,6 +9,7 @@ import yoloLogoUrl from "../assets/logo.png";
 import PreviewModal from "./PreviewModal.jsx";
 
 const BarcodeScanModal = lazy(() => import("./BarcodeScanModal.jsx"));
+const LabourLivePhotoModal = lazy(() => import("./LabourLivePhotoModal.jsx"));
 
 const emptyForm = () => ({
   labourId: "",
@@ -206,6 +207,8 @@ function findFirstSelectableMember(main, mainApiAge, familyList) {
 
 export default function LabourRegistrationForm({ atmId = "" }) {
   const [form, setForm] = useState(emptyForm);
+  const [geoPhoto, setGeoPhoto] = useState(null);
+  const geoPreviewRevokeRef = useRef(null);
   const [errors, setErrors] = useState({});
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -224,10 +227,29 @@ export default function LabourRegistrationForm({ atmId = "" }) {
   const [successMsg, setSuccessMsg] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [barcodeScanOpen, setBarcodeScanOpen] = useState(false);
+  const [livePhotoModalOpen, setLivePhotoModalOpen] = useState(false);
   const [mainMemberForm, setMainMemberForm] = useState(null);
   const [mainCardAgeYears, setMainCardAgeYears] = useState(null);
   const [familyOptions, setFamilyOptions] = useState([]);
   const [selectedMemberKey, setSelectedMemberKey] = useState("main");
+
+  const setGeoPhotoSafe = useCallback((next) => {
+    if (geoPreviewRevokeRef.current) {
+      URL.revokeObjectURL(geoPreviewRevokeRef.current);
+      geoPreviewRevokeRef.current = null;
+    }
+    if (next?.previewUrl) geoPreviewRevokeRef.current = next.previewUrl;
+    setGeoPhoto(next);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (geoPreviewRevokeRef.current) {
+        URL.revokeObjectURL(geoPreviewRevokeRef.current);
+        geoPreviewRevokeRef.current = null;
+      }
+    };
+  }, []);
 
   function updateField(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -255,6 +277,7 @@ export default function LabourRegistrationForm({ atmId = "" }) {
     if (!mainMemberForm) return;
     const regId = mainMemberForm.labourId;
     setErrors({});
+    setGeoPhotoSafe(null);
     if (key === "main") {
       const age = resolveCardAgeYears(mainMemberForm, mainCardAgeYears);
       if (!memberMeetsMinAge(age)) return;
@@ -308,6 +331,7 @@ export default function LabourRegistrationForm({ atmId = "" }) {
         });
       }
       setErrors({});
+      setGeoPhotoSafe(null);
       setLoaded(true);
     } catch (e) {
       setLoaded(false);
@@ -315,6 +339,7 @@ export default function LabourRegistrationForm({ atmId = "" }) {
       setMainCardAgeYears(null);
       setFamilyOptions([]);
       setSelectedMemberKey("");
+      setGeoPhotoSafe(null);
       setLoadError(e.message || "Something went wrong.");
     } finally {
       setLoadingLabour(false);
@@ -346,23 +371,34 @@ export default function LabourRegistrationForm({ atmId = "" }) {
       return;
     }
     const nextErrors = validateLabourForm(form);
+    if (!geoPhoto?.blob) {
+      nextErrors.geoTaggedPhoto = "Take a Labour live photo before continuing.";
+    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       const firstKey = Object.keys(nextErrors)[0];
       const el = document.getElementById(
-        firstKey === "labourId"
-          ? "labourId"
-          : firstKey === "ayushmanCardNumber"
-            ? "ayushmanCardNumber"
-            : firstKey === "countryCode"
-              ? "countryCode"
-              : firstKey,
+        firstKey === "geoTaggedPhoto"
+          ? "geo-photo-section"
+          : firstKey === "labourId"
+            ? "labourId"
+            : firstKey === "ayushmanCardNumber"
+              ? "ayushmanCardNumber"
+              : firstKey === "countryCode"
+                ? "countryCode"
+                : firstKey,
       );
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
       el?.focus?.();
       return;
     }
-    setPreviewValues({ ...form, atmId });
+    setPreviewValues({
+      ...form,
+      atmId,
+      geoTaggedPhoto: geoPhoto.blob,
+      geoPhotoMeta: geoPhoto.meta,
+      geoTaggedPreviewUrl: geoPhoto.previewUrl,
+    });
     setPreviewOpen(true);
   }
 
@@ -388,12 +424,15 @@ export default function LabourRegistrationForm({ atmId = "" }) {
           : "",
         mappedBarcode: previewValues.mappedBarcode,
         address: String(previewValues.address || "").trim(),
+        geoTaggedPhoto: previewValues.geoTaggedPhoto,
+        geoPhotoMeta: previewValues.geoPhotoMeta,
       });
       setPreviewOpen(false);
       setPreviewValues(null);
       setSuccessMsg("Registration submitted successfully.");
       setLoaded(false);
       setForm(emptyForm());
+      setGeoPhotoSafe(null);
       setErrors({});
       setMainMemberForm(null);
       setMainCardAgeYears(null);
@@ -445,7 +484,10 @@ export default function LabourRegistrationForm({ atmId = "" }) {
   const selectedCard = memberCards.find((c) => c.key === selectedMemberKey);
   const hasSelectableMember = memberCards.some((c) => c.selectable);
   const canReviewSubmit =
-    loaded && Boolean(selectedCard?.selectable) && isLabourFormComplete(form);
+    loaded &&
+    Boolean(selectedCard?.selectable) &&
+    isLabourFormComplete(form) &&
+    Boolean(geoPhoto?.blob);
 
   return (
     <>
@@ -791,6 +833,76 @@ export default function LabourRegistrationForm({ atmId = "" }) {
                   </div>
                 ) : null}
 
+                <div
+                  className="field field--full geo-photo-field"
+                  id="geo-photo-section"
+                  aria-labelledby="geo-photo-label"
+                >
+                  <span className="field-label" id="geo-photo-label">
+                    Labour live photo <span className="req">*</span>
+                  </span>
+                  {geoPhoto ? (
+                    <div className="labour-live-photo-block">
+                      <div className="labour-live-photo-block__thumb-wrap">
+                        <img
+                          src={geoPhoto.previewUrl}
+                          alt="Labour live photo preview"
+                          className="labour-live-photo-block__thumb"
+                        />
+                      </div>
+                      {geoPhoto.meta?.address ? (
+                        <p className="field-hint labour-live-photo-block__loc">
+                          <span className="labour-live-photo-block__loc-label">Location</span>
+                          <span className="labour-live-photo-block__addr">{geoPhoto.meta.address}</span>
+                        </p>
+                      ) : null}
+                      <div className="barcode-actions labour-live-photo-block__actions">
+                        <button
+                          type="button"
+                          className="btn btn-scan"
+                          onClick={() => setLivePhotoModalOpen(true)}
+                          disabled={loadingLabour || finalSubmitting}
+                        >
+                          Retake live photo
+                        </button>
+                        <a
+                          href={geoPhoto.previewUrl}
+                          download="labour-geo-tagged.jpg"
+                          className="labour-live-photo-block__download-link"
+                          onClick={(e) => {
+                            if (loadingLabour || finalSubmitting) e.preventDefault();
+                          }}
+                          aria-disabled={loadingLabour || finalSubmitting ? "true" : undefined}
+                        >
+                          Download
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="field-hint">
+                        Opens the camera in a full-screen panel. The saved image includes GPS, time, and map
+                        details—same as a GPS map camera.
+                      </p>
+                      <div className="barcode-actions">
+                        <button
+                          type="button"
+                          className="btn btn-scan"
+                          onClick={() => setLivePhotoModalOpen(true)}
+                          disabled={loadingLabour || finalSubmitting}
+                        >
+                          Take live photo
+                        </button>
+                      </div>
+                    </>
+                  )}
+                  {errors.geoTaggedPhoto ? (
+                    <p className="field-error" role="alert">
+                      {errors.geoTaggedPhoto}
+                    </p>
+                  ) : null}
+                </div>
+
                 <div className="field span-barcode">
                   <label className="field-label" htmlFor="mappedBarcode">
                     Barcode <span className="req">*</span>
@@ -834,7 +946,9 @@ export default function LabourRegistrationForm({ atmId = "" }) {
                       ? `Select a member aged ${MIN_MEMBER_REGISTER_AGE}+ (none available for this record).`
                       : !selectedCard?.selectable
                         ? `Select a member aged ${MIN_MEMBER_REGISTER_AGE}+.`
-                        : "Fill every required field (red *), including a valid barcode."
+                        : !geoPhoto?.blob
+                          ? "Take Labour live photo (camera + GPS) from the modal."
+                          : "Fill every required field (red *), including a valid barcode."
                 }
               >
                 Review & submit
@@ -865,6 +979,24 @@ export default function LabourRegistrationForm({ atmId = "" }) {
               const cleaned = String(code).replace(/[^A-Za-z0-9\-]/g, "").slice(0, 64);
               updateField("mappedBarcode", cleaned);
               setBarcodeScanOpen(false);
+            }}
+          />
+        </Suspense>
+      ) : null}
+
+      {livePhotoModalOpen ? (
+        <Suspense fallback={null}>
+          <LabourLivePhotoModal
+            open
+            onClose={() => setLivePhotoModalOpen(false)}
+            onCaptured={(blob, meta) => {
+              const previewUrl = URL.createObjectURL(blob);
+              setGeoPhotoSafe({ blob, previewUrl, meta });
+              setErrors((prev) => {
+                const next = { ...prev };
+                delete next.geoTaggedPhoto;
+                return next;
+              });
             }}
           />
         </Suspense>

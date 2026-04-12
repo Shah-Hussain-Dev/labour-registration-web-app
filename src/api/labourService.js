@@ -40,6 +40,32 @@ async function postJson(path, body) {
   return data;
 }
 
+async function postFormData(path, formData) {
+  const url = `${apiRoot()}${path.startsWith("/") ? path : `/${path}`}`;
+  const res = await fetch(url, {
+    method: "POST",
+    body: formData,
+  });
+
+  const text = await res.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const msg =
+      (data && (data.message || data.error || data.detail)) ||
+      text ||
+      `Request failed (${res.status})`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+
+  return data;
+}
+
 function mapGenderForApi(formGender) {
   const g = String(formGender || "").trim().toLowerCase();
   if (g === "prefer_not") return "other";
@@ -249,12 +275,38 @@ export async function submitLabourRegistration(payload) {
   }
 
   const body = buildRegisterPatientBody(payload);
-  const data = await postJson("/v1/camp/uk-bocw/register-patient", body);
-  assertRegisterOk(data);
+  const photo = payload?.geoTaggedPhoto;
 
-  if (import.meta.env.DEV) {
-    console.info("[YoloHealth register-patient]", body);
+  let data;
+  if (photo instanceof Blob) {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(body)) {
+      fd.append(k, v == null ? "" : String(v));
+    }
+    fd.append("geo_tagged_photo", photo, "geo-tagged-registration.jpg");
+    const meta = payload?.geoPhotoMeta;
+    if (meta && typeof meta === "object") {
+      fd.append("photo_latitude", String(meta.latitude ?? ""));
+      fd.append("photo_longitude", String(meta.longitude ?? ""));
+      fd.append(
+        "photo_accuracy_m",
+        meta.accuracyM != null && Number.isFinite(meta.accuracyM) ? String(meta.accuracyM) : "",
+      );
+      fd.append("photo_address", String(meta.address ?? ""));
+      fd.append("photo_captured_at", String(meta.capturedAt ?? ""));
+    }
+    data = await postFormData("/v1/camp/uk-bocw/register-patient", fd);
+    if (import.meta.env.DEV) {
+      console.info("[YoloHealth register-patient multipart]", { ...body, geo_tagged_photo: "[Blob]" });
+    }
+  } else {
+    data = await postJson("/v1/camp/uk-bocw/register-patient", body);
+    if (import.meta.env.DEV) {
+      console.info("[YoloHealth register-patient]", body);
+    }
   }
+
+  assertRegisterOk(data);
 
   return data ?? { ok: true };
 }
