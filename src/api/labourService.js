@@ -105,10 +105,6 @@ function normalizeFromLabourApiRow(raw, fallbackLabRegNo) {
     dob,
     gender,
     address,
-    ayushmanCard: Boolean(raw.ayushmanCard ?? raw.ayushman_card),
-    ayushmanCardNumber: String(
-      raw.ayushmanCardNumber ?? raw.ayushman_card_number ?? raw.ayushmanCardNo ?? "",
-    ).trim(),
     mappedBarcode: "",
   };
 }
@@ -251,15 +247,12 @@ export async function submitLabourRegistration(payload) {
 
   const base = buildRegisterPatientBody(payload);
   const photo = payload?.geoTaggedPhoto;
-
-  let photoBase64;
-  if (photo instanceof Blob) {
-    const dataUrl = await readBlobAsDataUrl(photo);
-    photoBase64 = dataUrl.includes(",") ? dataUrl.split(",", 2)[1] : dataUrl;
+  if (!(photo instanceof Blob)) {
+    throw new Error("Labour live photo is required to submit.");
   }
 
-  const live_location =
-    photo instanceof Blob ? String(payload?.geoPhotoMeta?.address ?? "").trim() : "";
+  const photoDataUrl = await readBlobAsDataUrl(photo);
+  const liveLocationTrim = String(payload?.geoPhotoMeta?.address ?? "").trim();
 
   const body = {
     name: base.name,
@@ -272,15 +265,15 @@ export async function submitLabourRegistration(payload) {
     labour_id: base.labour_id,
     kiosk_id: base.kiosk_id,
     adhaar_number: base.adhaar_number,
-    live_location,
-    ...(photoBase64 != null ? { photo: photoBase64 } : {}),
+    ...(liveLocationTrim ? { live_location: liveLocationTrim } : {}),
+    photo: photoDataUrl,
   };
 
   if (import.meta.env.DEV) {
     const { photo: photoLog, ...rest } = body;
     console.info("[YoloHealth register-patient]", {
       ...rest,
-      ...(photoLog != null ? { photo: `[base64 ${String(photoLog).length} chars]` } : {}),
+      ...(photoLog != null ? { photo: `[data URL ${String(photoLog).length} chars]` } : {}),
     });
   }
 

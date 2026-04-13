@@ -87,7 +87,30 @@ export default function LabourLivePhotoModal({ open, onClose, onCaptured }) {
       onCaptured(blob, meta);
       onClose();
     } catch (e) {
-      if (e?.code !== undefined && typeof e.code === "number") {
+      const geoBlocked =
+        (e && typeof e.code === "number" && e.code >= 1 && e.code <= 3) ||
+        /Geolocation is not supported/i.test(String(e?.message || ""));
+      if (geoBlocked) {
+        try {
+          const capturedAt = new Date().toISOString();
+          const capturedAtLabel = new Date().toLocaleString(undefined, {
+            dateStyle: "medium",
+            timeStyle: "medium",
+          });
+          const blob = await (await fetch(shot)).blob();
+          onCaptured(blob, {
+            latitude: null,
+            longitude: null,
+            accuracyM: null,
+            address: "",
+            capturedAt,
+            capturedAtLabel,
+          });
+          onClose();
+        } catch (inner) {
+          setLocalError(inner?.message || "Could not save photo.");
+        }
+      } else if (e?.code !== undefined && typeof e.code === "number") {
         setLocalError(geoErrorMessage(e));
       } else {
         setLocalError(e?.message || "Could not build geo-tagged photo.");

@@ -34,10 +34,6 @@ export default function PreviewModal({ open, values, onBack, onConfirm, submitti
     ["Address", String(values.address || "").trim() || "—"],
     ["Date of birth", dobDisplay],
     ["Gender", genderLabel],
-    ["Ayushman card", values.ayushmanCard ? "Yes" : "No"],
-    ...(values.ayushmanCard
-      ? [["Ayushman card number", String(values.ayushmanCardNumber || "").trim() || "—"]]
-      : []),
     ["Barcode", values.mappedBarcode || "—"],
   ];
 

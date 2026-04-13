@@ -21,15 +21,12 @@ const emptyForm = () => ({
   address: "",
   dob: "",
   gender: "",
-  ayushmanCard: false,
-  ayushmanCardNumber: "",
   mappedBarcode: "",
 });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LABOUR_ID_RE = /^[\dA-Za-z\-]{4,32}$/;
 const BARCODE_RE = /^[A-Za-z0-9\-]{3,64}$/;
-const AYUSHMAN_RE = /^[\dA-Za-z\-]{3,50}$/;
 const NAME_MAX = 150;
 const ADDRESS_MAX = 500;
 
@@ -121,12 +118,6 @@ function validateLabourForm(f) {
         err.mobile = "Enter 8–15 digits for this country code";
       }
     }
-  }
-
-  if (f.ayushmanCard) {
-    const acn = String(f.ayushmanCardNumber || "").trim();
-    if (!acn) err.ayushmanCardNumber = "Ayushman card number is required";
-    else if (!AYUSHMAN_RE.test(acn)) err.ayushmanCardNumber = "Use 3–50 letters, digits, or hyphens";
   }
 
   const barcode = String(f.mappedBarcode || "").trim();
@@ -382,11 +373,9 @@ export default function LabourRegistrationForm({ atmId = "" }) {
           ? "geo-photo-section"
           : firstKey === "labourId"
             ? "labourId"
-            : firstKey === "ayushmanCardNumber"
-              ? "ayushmanCardNumber"
-              : firstKey === "countryCode"
-                ? "countryCode"
-                : firstKey,
+            : firstKey === "countryCode"
+              ? "countryCode"
+              : firstKey,
       );
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
       el?.focus?.();
@@ -418,10 +407,6 @@ export default function LabourRegistrationForm({ atmId = "" }) {
         email: previewValues.email,
         dob: previewValues.dob,
         gender: previewValues.gender,
-        ayushmanCard: previewValues.ayushmanCard,
-        ayushmanCardNumber: previewValues.ayushmanCard
-          ? String(previewValues.ayushmanCardNumber || "").trim()
-          : "",
         mappedBarcode: previewValues.mappedBarcode,
         address: String(previewValues.address || "").trim(),
         geoTaggedPhoto: previewValues.geoTaggedPhoto,
@@ -786,53 +771,6 @@ export default function LabourRegistrationForm({ atmId = "" }) {
                   {errors.gender ? <p className="field-error">{errors.gender}</p> : null}
                 </div>
 
-                <div className="field field--full span-barcode">
-                  <label className="check">
-                    <input
-                      type="checkbox"
-                      checked={form.ayushmanCard}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setForm((prev) => ({
-                          ...prev,
-                          ayushmanCard: checked,
-                          ayushmanCardNumber: checked ? prev.ayushmanCardNumber : "",
-                        }));
-                        if (errors.ayushmanCardNumber) {
-                          setErrors((prev) => {
-                            const next = { ...prev };
-                            delete next.ayushmanCardNumber;
-                            return next;
-                          });
-                        }
-                      }}
-                    />
-                    <span>Does the patient have an Ayushman card?</span>
-                  </label>
-                </div>
-
-                {form.ayushmanCard ? (
-                  <div className="field field--full span-barcode">
-                    <label className="field-label" htmlFor="ayushmanCardNumber">
-                      Ayushman card number <span className="req">*</span>
-                    </label>
-                    <input
-                      id="ayushmanCardNumber"
-                      type="text"
-                      className="input"
-                      autoComplete="off"
-                      placeholder="Enter Ayushman card number"
-                      value={form.ayushmanCardNumber}
-                      onChange={(e) => updateField("ayushmanCardNumber", e.target.value)}
-                      aria-invalid={errors.ayushmanCardNumber ? "true" : "false"}
-                      aria-required="true"
-                    />
-                    {errors.ayushmanCardNumber ? (
-                      <p className="field-error">{errors.ayushmanCardNumber}</p>
-                    ) : null}
-                  </div>
-                ) : null}
-
                 <div
                   className="field field--full geo-photo-field"
                   id="geo-photo-section"
@@ -881,8 +819,8 @@ export default function LabourRegistrationForm({ atmId = "" }) {
                   ) : (
                     <>
                       <p className="field-hint">
-                        Opens the camera in a full-screen panel. The saved image includes GPS, time, and map
-                        details—same as a GPS map camera.
+                        Full-screen camera. With GPS, the saved photo includes location and time; without GPS
+                        you can still save a plain camera photo.
                       </p>
                       <div className="barcode-actions">
                         <button
