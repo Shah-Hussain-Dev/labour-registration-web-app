@@ -19,6 +19,13 @@ export default defineConfig(({ mode }) => {
           secure: true,
           rewrite: (p) => p.replace(/^\/yolo-hms-api/, "/api"),
         },
+        /* Dev: same-origin fetch to /api/healthatm/v1/... → system.healthatm.com/api/v1/... */
+        "/api/healthatm": {
+          target: "https://system.healthatm.com",
+          changeOrigin: true,
+          secure: true,
+          rewrite: (p) => p.replace(/^\/api\/healthatm/, "/api"),
+        },
         "/api/maps/static": {
           target: "https://maps.googleapis.com",
           changeOrigin: true,

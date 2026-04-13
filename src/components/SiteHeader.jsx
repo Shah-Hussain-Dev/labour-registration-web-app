@@ -1,6 +1,6 @@
 import welfareBoardLogoUrl from "../assets/w-logo.png";
 
-export default function SiteHeader({ atmId, onChangeAtmClick }) {
+export default function SiteHeader() {
   return (
     <header className="site-header" aria-labelledby="site-header-board-title">
       <div className="site-header__inner">
@@ -28,16 +28,6 @@ export default function SiteHeader({ atmId, onChangeAtmClick }) {
             </div>
           </div>
         </div>
-        {atmId ? (
-          <div className="site-header__actions">
-            <span className="atm-id-display" title="Current ATM ID">
-              ATM ID: <strong>{atmId}</strong>
-            </span>
-            <button type="button" className="btn btn-atm-change" onClick={onChangeAtmClick}>
-              Change ATM ID
-            </button>
-          </div>
-        ) : null}
       </div>
     </header>
   );

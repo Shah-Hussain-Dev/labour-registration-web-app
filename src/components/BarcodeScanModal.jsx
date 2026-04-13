@@ -34,7 +34,7 @@ function mediaConstraints(useBack) {
  * EAN-13 / 1D / 2D via @zxing/browser (works in Chrome, Firefox, Safari, Edge with camera).
  * Note: npm `next-barcode` only generates barcodes to display; it does not read from the camera.
  */
-export default function BarcodeScanModal({ open, onClose, onDetected }) {
+export default function BarcodeScanModal({ open, onClose, onDetected, title }) {
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
   const onDetectedRef = useRef(onDetected);
@@ -130,7 +130,7 @@ export default function BarcodeScanModal({ open, onClose, onDetected }) {
       <div className="scan-modal-panel">
         <div className="scan-modal-head">
           <h2 id="scan-title" className="scan-modal-title">
-            Scan EAN-13 barcode
+            {title ?? "Scan EAN-13 barcode"}
           </h2>
           <button type="button" className="scan-modal-close" onClick={onClose} aria-label="Close">
             ×
