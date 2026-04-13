@@ -509,6 +509,14 @@ body {
   margin-top: 0.75rem;
 }
 
+.scan-test-panel__error--load {
+  margin: 0 0 1.15rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--yh-danger) 8%, var(--yh-card));
+  border: 1px solid color-mix(in srgb, var(--yh-danger) 22%, var(--yh-border));
+}
+
 .scan-test-panel__empty {
   margin: 1rem 0 0;
   padding: 1rem 1.25rem;

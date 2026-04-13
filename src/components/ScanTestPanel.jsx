@@ -205,6 +205,7 @@ export default function ScanTestPanel() {
                 ? "true"
                 : "false"
             }
+            aria-describedby={error && !loading ? "scan-test-load-error" : undefined}
             placeholder="e.g. BOCW2781"
           />
           <div className="barcode-actions scan-test-panel__actions">
@@ -221,13 +222,13 @@ export default function ScanTestPanel() {
             </button>
           </div>
         </div>
-
-        {error ? (
-          <p className="field-error scan-test-panel__error" role="alert">
-            {error}
-          </p>
-        ) : null}
       </div>
+
+      {error ? (
+        <p id="scan-test-load-error" className="field-error scan-test-panel__error scan-test-panel__error--load" role="alert">
+          {error}
+        </p>
+      ) : null}
 
       {hasRows ? (
         <section className="scan-test-list" aria-label="Additional tests">

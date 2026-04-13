@@ -9,13 +9,26 @@ export async function fetchAdditionalTests(barcode) {
   const b = String(barcode ?? "").trim();
   const q = new URLSearchParams({ barcode: b });
   const res = await fetch(`${HEALTHATM_API_PREFIX}/camp/additional-tests?${q.toString()}`);
+
+  let json;
+  try {
+    json = await res.json();
+  } catch {
+    if (!res.ok) {
+      throw new Error(`Could not load tests (${res.status}).`);
+    }
+    throw new Error("Could not load tests.");
+  }
+
+  const serverMsg = json?.message != null ? String(json.message) : "";
+
   if (!res.ok) {
-    throw new Error(`Could not load tests (${res.status}).`);
+    throw new Error(serverMsg || `Could not load tests (${res.status}).`);
   }
-  const json = await res.json();
   if (!json?.success) {
-    throw new Error(String(json?.message || "Could not load tests."));
+    throw new Error(serverMsg || "Could not load tests.");
   }
+
   const list = json?.data?.additional_tests;
   return Array.isArray(list) ? list : [];
 }
