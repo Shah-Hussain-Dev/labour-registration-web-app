@@ -35,32 +35,6 @@ async function postJson(path, body) {
   return data;
 }
 
-async function postFormData(path, formData) {
-  const url = `${apiRoot()}${path.startsWith("/") ? path : `/${path}`}`;
-  const res = await fetch(url, {
-    method: "POST",
-    body: formData,
-  });
-
-  const text = await res.text();
-  let data = null;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = null;
-  }
-
-  if (!res.ok) {
-    const msg =
-      (data && (data.message || data.error || data.detail)) ||
-      text ||
-      `Request failed (${res.status})`;
-    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
-  }
-
-  return data;
-}
-
 function mapGenderForApi(formGender) {
   const g = String(formGender || "").trim().toLowerCase();
   if (g === "prefer_not") return "other";
@@ -177,6 +151,7 @@ export function buildRegisterPatientBody(payload) {
   return {
     name: String(payload?.name || "").trim(),
     date_of_birth: String(payload?.dob || "").trim(),
+    address: String(payload?.address || "").trim(),
     gender: mapGenderForApi(payload?.gender),
     mobile,
     email: String(payload?.email || "").trim(),
@@ -184,10 +159,6 @@ export function buildRegisterPatientBody(payload) {
     labour_id,
     kiosk_id,
     adhaar_number: String(payload?.aadhaar || "").trim(),
-    ayushman_card_number: payload?.ayushmanCard
-      ? String(payload?.ayushmanCardNumber || "").trim()
-      : "",
-    address: String(payload?.address || "").trim(),
   };
 }
 
@@ -202,6 +173,15 @@ function assertGetLabourOk(data) {
       "Could not load labour data.";
     throw new Error(typeof msg === "string" ? msg : "Could not load labour data.");
   }
+}
+
+function readBlobAsDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Could not read photo."));
+    reader.readAsDataURL(blob);
+  });
 }
 
 function assertRegisterOk(data) {
@@ -269,37 +249,42 @@ export async function submitLabourRegistration(payload) {
     throw new Error("ATM ID is required to submit.");
   }
 
-  const body = buildRegisterPatientBody(payload);
+  const base = buildRegisterPatientBody(payload);
   const photo = payload?.geoTaggedPhoto;
 
-  let data;
+  let photoBase64;
   if (photo instanceof Blob) {
-    const fd = new FormData();
-    for (const [k, v] of Object.entries(body)) {
-      fd.append(k, v == null ? "" : String(v));
-    }
-    fd.append("geo_tagged_photo", photo, "geo-tagged-registration.jpg");
-    const meta = payload?.geoPhotoMeta;
-    if (meta && typeof meta === "object") {
-      fd.append("photo_latitude", String(meta.latitude ?? ""));
-      fd.append("photo_longitude", String(meta.longitude ?? ""));
-      fd.append(
-        "photo_accuracy_m",
-        meta.accuracyM != null && Number.isFinite(meta.accuracyM) ? String(meta.accuracyM) : "",
-      );
-      fd.append("photo_address", String(meta.address ?? ""));
-      fd.append("photo_captured_at", String(meta.capturedAt ?? ""));
-    }
-    data = await postFormData("/v1/camp/uk-bocw/register-patient", fd);
-    if (import.meta.env.DEV) {
-      console.info("[YoloHealth register-patient multipart]", { ...body, geo_tagged_photo: "[Blob]" });
-    }
-  } else {
-    data = await postJson("/v1/camp/uk-bocw/register-patient", body);
-    if (import.meta.env.DEV) {
-      console.info("[YoloHealth register-patient]", body);
-    }
+    const dataUrl = await readBlobAsDataUrl(photo);
+    photoBase64 = dataUrl.includes(",") ? dataUrl.split(",", 2)[1] : dataUrl;
   }
+
+  const live_location =
+    photo instanceof Blob ? String(payload?.geoPhotoMeta?.address ?? "").trim() : "";
+
+  const body = {
+    name: base.name,
+    date_of_birth: base.date_of_birth,
+    address: base.address,
+    gender: base.gender,
+    mobile: base.mobile,
+    email: base.email,
+    barcode: base.barcode,
+    labour_id: base.labour_id,
+    kiosk_id: base.kiosk_id,
+    adhaar_number: base.adhaar_number,
+    live_location,
+    ...(photoBase64 != null ? { photo: photoBase64 } : {}),
+  };
+
+  if (import.meta.env.DEV) {
+    const { photo: photoLog, ...rest } = body;
+    console.info("[YoloHealth register-patient]", {
+      ...rest,
+      ...(photoLog != null ? { photo: `[base64 ${String(photoLog).length} chars]` } : {}),
+    });
+  }
+
+  const data = await postJson("/v1/camp/uk-bocw/register-patient", body);
 
   assertRegisterOk(data);
 

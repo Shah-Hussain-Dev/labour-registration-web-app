@@ -24,10 +24,19 @@ export default function LabourLivePhotoModal({ open, onClose, onCaptured }) {
   const webcamRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState("");
+  /** `"environment"` = rear, `"user"` = front (mobile). */
+  const [facingMode, setFacingMode] = useState("environment");
 
   useEffect(() => {
-    if (open) setLocalError("");
+    if (open) {
+      setLocalError("");
+      setFacingMode("environment");
+    }
   }, [open]);
+
+  const toggleFacingMode = useCallback(() => {
+    setFacingMode((prev) => (prev === "environment" ? "user" : "environment"));
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -99,17 +108,18 @@ export default function LabourLivePhotoModal({ open, onClose, onCaptured }) {
     >
       <div className="cam-fullscreen__viewport">
         <Webcam
+          key={facingMode}
           audio={false}
           ref={webcamRef}
           screenshotFormat="image/jpeg"
           screenshotQuality={0.92}
           className="cam-fullscreen__video"
-            videoConstraints={{
-              facingMode: "environment",
-              aspectRatio: { ideal: 3 / 4 },
-              width: { ideal: 1080, min: 540 },
-              height: { ideal: 1440, min: 720 },
-            }}
+          videoConstraints={{
+            facingMode,
+            aspectRatio: { ideal: 3 / 4 },
+            width: { ideal: 1080, min: 540 },
+            height: { ideal: 1440, min: 720 },
+          }}
           onUserMediaError={() =>
             setLocalError("Camera permission denied or no camera found.")
           }
@@ -143,7 +153,52 @@ export default function LabourLivePhotoModal({ open, onClose, onCaptured }) {
 
       <footer className="cam-fullscreen__bottom">
         <div className="cam-fullscreen__bottom-row">
-          <div className="cam-fullscreen__bottom-slot" aria-hidden />
+          <div className="cam-fullscreen__bottom-slot">
+            <button
+              type="button"
+              className="cam-fullscreen__flip"
+              onClick={toggleFacingMode}
+              disabled={busy}
+              aria-label={
+                facingMode === "environment"
+                  ? "Switch to front camera"
+                  : "Switch to rear camera"
+              }
+              title={
+                facingMode === "environment"
+                  ? "Use front camera"
+                  : "Use rear camera"
+              }
+            >
+              <svg
+                className="cam-fullscreen__flip-icon"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden
+              >
+                <path
+                  d="M20.49 9A9 9 0 0 0 5.64 5.64L3 3v6h6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M3.51 15A9 9 0 0 0 18.36 18.36L21 21v-6h-6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {/* <span className="cam-fullscreen__flip-text">
+                {facingMode === "environment" ? "Front" : "Rear"}
+              </span> */}
+            </button>
+          </div>
           <button
             type="button"
             className="cam-fullscreen__shutter"

@@ -11,6 +11,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    esbuild: {
+      drop: mode === "production" ? ["console", "debugger"] : [],
+    },
     server: {
       proxy: {
         "/yolo-hms-api": {

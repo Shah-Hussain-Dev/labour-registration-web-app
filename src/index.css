@@ -2020,6 +2020,59 @@ body {
   outline-offset: 2px;
 }
 
+.cam-fullscreen__flip {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  width: var(--yh-tap-min);
+  min-height: var(--yh-tap-min);
+  margin: 0;
+  padding: 0.25rem 0.15rem 0.2rem;
+  border: none;
+  border-radius: 100px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+  touch-action: manipulation;
+}
+
+@media (max-width: 767px), (pointer: coarse) {
+  .cam-fullscreen__flip {
+    display: flex;
+  }
+}
+
+.cam-fullscreen__flip:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.cam-fullscreen__flip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cam-fullscreen__flip:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.cam-fullscreen__flip-icon {
+  flex-shrink: 0;
+}
+
+.cam-fullscreen__flip-text {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+  opacity: 0.95;
+}
+
 .cam-fullscreen__title-block {
   flex: 1;
   min-width: 0;
