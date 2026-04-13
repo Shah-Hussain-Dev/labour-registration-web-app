@@ -1,14 +1,16 @@
-const HEALTHATM_API_PREFIX = "/api/healthatm/v1";
+import { HEALTH_ATM_API_BASE_URL } from "../constants/healthAtmApiBase.js";
+
+const CAMP_V1 = `${HEALTH_ATM_API_BASE_URL}/v1/camp`;
 
 /**
- * GET additional camp tests for a patient barcode (proxied in dev via vite.config.js).
+ * GET additional camp tests for a patient barcode.
  * @param {string} barcode
  * @returns {Promise<Array<Record<string, unknown>>>}
  */
 export async function fetchAdditionalTests(barcode) {
   const b = String(barcode ?? "").trim();
   const q = new URLSearchParams({ barcode: b });
-  const res = await fetch(`${HEALTHATM_API_PREFIX}/camp/additional-tests?${q.toString()}`);
+  const res = await fetch(`${CAMP_V1}/additional-tests?${q.toString()}`);
 
   let json;
   try {
@@ -42,7 +44,7 @@ export async function markAdditionalTestsDone(ids) {
   if (!list.length) {
     throw new Error("No tests to mark.");
   }
-  const res = await fetch(`${HEALTHATM_API_PREFIX}/camp/additional-tests/mark-done`, {
+  const res = await fetch(`${CAMP_V1}/additional-tests/mark-done`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids: list }),

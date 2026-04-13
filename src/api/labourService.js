@@ -1,16 +1,11 @@
 /**
  * UK BOCW camp APIs — uses native fetch only.
- * Dev: Vite proxies /yolo-hms-api → https://hms.yolohealth.in/api (see vite.config.js).
+ * Base URL: {@link HEALTH_ATM_API_BASE_URL}
  */
-
-
-
-
-
-const HMS_PUBLIC_BASE = import.meta.env.VITE_API_URL || "https://system.healthatm.com/api";
+import { HEALTH_ATM_API_BASE_URL } from "../constants/healthAtmApiBase.js";
 
 function apiRoot() {
-  return HMS_PUBLIC_BASE;
+  return HEALTH_ATM_API_BASE_URL;
 }
 
 async function postJson(path, body) {
