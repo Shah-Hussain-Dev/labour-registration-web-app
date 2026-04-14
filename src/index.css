@@ -301,8 +301,8 @@ body {
 
 .btn-atm-change {
   flex-shrink: 0;
-  padding: 0.45rem 0.75rem;
-  min-height: 2.25rem;
+  padding: 0.2rem 0.75rem;
+  min-height: 2rem;
   font-size: 0.8125rem;
   font-weight: 600;
   color: #0a98fe;
@@ -491,6 +491,64 @@ body {
 
 .scan-test-panel__title {
   margin-bottom: 0.5rem;
+}
+
+.upload-report-panel__form .field:last-of-type {
+  margin-bottom: 0;
+}
+
+.upload-report-panel__file {
+  padding: 0.5rem 0.65rem;
+  font-size: 0.875rem;
+}
+
+.upload-report-panel__status {
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+}
+
+.upload-report-panel__form .banner--success.upload-report-panel__status {
+  margin-bottom: 0;
+}
+
+.upload-report-panel__actions {
+  margin-top: 1rem;
+}
+
+.upload-report-panel__session {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem!important;
+}
+
+.upload-report-panel__session-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.upload-report-panel__session-text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--yh-muted);
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.upload-report-panel__session-text strong {
+  color: var(--yh-text);
+  font-weight: 700;
+}
+
+.upload-report-panel__sign-out {
+  flex-shrink: 0;
+}
+
+.upload-report-panel__form-title {
+  font-size: 1.125rem;
 }
 
 .scan-test-panel__intro {
@@ -734,17 +792,13 @@ body {
 .bottom-tab-bar__inner {
   max-width: 56rem;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.35rem;
-  align-items: stretch;
+  display: block;
 }
 
-.bottom-tab-bar__tablist {
+.bottom-tab-bar__links {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.35rem;
-  grid-column: span 2;
   min-width: 0;
 }
 
@@ -768,6 +822,9 @@ body {
   justify-content: center;
   gap: 0.2rem;
   min-height: 3.25rem;
+  text-decoration: none;
+  text-align: center;
+  box-sizing: border-box;
   transition:
     background 0.15s ease,
     color 0.15s ease;
@@ -810,71 +867,6 @@ body {
   }
 }
 
-.bottom-tab-bar__atm {
-  appearance: none;
-  border: none;
-  margin: 0;
-  padding: 0.45rem 0.35rem 0.5rem;
-  border-radius: 12px;
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  color: color-mix(in srgb, var(--yh-text) 72%, transparent);
-  background: transparent;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.15rem;
-  min-height: 3.25rem;
-  min-width: 0;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease;
-}
-
-.bottom-tab-bar__atm-main {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  width: 100%;
-  min-width: 0;
-}
-
-.bottom-tab-bar__atm-main .bottom-tab-bar__icon {
-  flex-shrink: 0;
-}
-
-.bottom-tab-bar__atm-id {
-  min-width: 0;
-  max-width: 100%;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.2;
-  color: inherit;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (hover: hover) {
-  .bottom-tab-bar__atm:hover {
-    color: var(--yh-text);
-    background: color-mix(in srgb, var(--yh-primary) 8%, transparent);
-  }
-}
-
-.bottom-tab-bar__atm:focus-visible {
-  outline: 2px solid var(--yh-primary);
-  outline-offset: 2px;
-}
-
 .form-card {
   max-width: 56rem;
   margin: 0 auto;
@@ -914,18 +906,6 @@ body {
   .form-card__title {
     font-size: 1.375rem;
   }
-}
-
-.form-card__atm {
-  margin: -0.5rem 0 1rem;
-  text-align: center;
-  font-size: 0.875rem;
-  color: var(--yh-muted);
-}
-
-.form-card__atm strong {
-  color: var(--yh-text);
-  font-weight: 700;
 }
 
 .powered-by {
@@ -1013,6 +993,7 @@ body {
   font-size: 0.8125rem;
   font-weight: 600;
   margin-bottom: 0.35rem;
+  margin-top: 0.7rem;
   color: var(--yh-text);
 }
 
@@ -1508,11 +1489,11 @@ body {
 .btn-scan {
   width: 100%;
   margin-top: 0;
-  background: #3d454d;
+  background: #3cb878;
   color: #fff;
   font-weight: 600;
   min-height: var(--yh-tap-min);
-  background-image: linear-gradient(to right, #243949 0%, #517fa4 100%);
+  background-image: linear-gradient(to right, #3cb878 0%, #517fa4 100%);
   border-radius: 10px;
 }
 

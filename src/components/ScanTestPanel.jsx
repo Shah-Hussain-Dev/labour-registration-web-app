@@ -206,7 +206,7 @@ export default function ScanTestPanel() {
                 : "false"
             }
             aria-describedby={error && !loading ? "scan-test-load-error" : undefined}
-            placeholder="e.g. BOCW2781"
+            placeholder="e.g. 1234567890"
           />
           <div className="barcode-actions scan-test-panel__actions">
             <button type="button" className="btn btn-scan" onClick={() => setBarcodeScanOpen(true)}>

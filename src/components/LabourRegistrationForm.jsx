@@ -482,11 +482,6 @@ export default function LabourRegistrationForm({ atmId = "" }) {
             ? `Register: ${labourIdTrimmed}`
             : "Labour registration"}
         </h1>
-        {atmId ? (
-          <p className="form-card__atm" aria-label="Current ATM ID">
-            ATM ID: <strong>{atmId}</strong>
-          </p>
-        ) : null}
 
         {successMsg ? (
           <p className="banner banner--success" role="status">
