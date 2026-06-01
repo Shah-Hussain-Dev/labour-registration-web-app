@@ -895,11 +895,85 @@ body {
 }
 
 .form-card__title {
-  margin: 0 0 1.25rem;
+  margin: 0 0 1rem;
   font-size: 1.25rem;
   font-weight: 600;
   text-align: center;
   letter-spacing: -0.02em;
+}
+
+.reg-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  margin: 0 0 1.25rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--yh-primary) 6%, #f0f2f6);
+  border: 1px solid color-mix(in srgb, var(--yh-primary) 10%, var(--yh-border));
+}
+
+.reg-mode-tabs__tab {
+  appearance: none;
+  border: none;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  text-align: center;
+  color: color-mix(in srgb, var(--yh-text) 78%, transparent);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+@media (min-width: 480px) {
+  .reg-mode-tabs__tab {
+    font-size: 0.875rem;
+    padding: 0.7rem 1rem;
+  }
+}
+
+.reg-mode-tabs__tab:focus-visible {
+  outline: 2px solid var(--yh-primary);
+  outline-offset: 2px;
+}
+
+.reg-mode-tabs__tab--active {
+  color: var(--yh-primary-dark);
+  background: var(--yh-card);
+  box-shadow:
+    0 1px 3px rgba(20, 22, 34, 0.08),
+    0 0 0 1px color-mix(in srgb, var(--yh-primary) 18%, transparent);
+}
+
+@media (hover: hover) {
+  .reg-mode-tabs__tab:hover:not(.reg-mode-tabs__tab--active) {
+    color: var(--yh-text);
+    background: color-mix(in srgb, var(--yh-primary) 10%, transparent);
+  }
+}
+
+.reg-mode-intro {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--yh-primary) 7%, white);
+  border: 1px solid color-mix(in srgb, var(--yh-primary) 14%, var(--yh-border));
+}
+
+.reg-mode-intro strong {
+  font-weight: 600;
+  color: var(--yh-text);
 }
 
 @media (min-width: 640px) {
