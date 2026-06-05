@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import AtmIdModal from "./components/AtmIdModal.jsx";
+import AppToaster from "./components/AppToaster.jsx";
 import AppLayout from "./layout/AppLayout.jsx";
 import RegistrationPage from "./pages/RegistrationPage.jsx";
 import ScanTestPage from "./pages/ScanTestPage.jsx";
@@ -58,6 +59,7 @@ export default function App() {
         onSave={handleAtmSave}
         onClose={() => setAtmModalOpen(false)}
       />
+      <AppToaster />
     </>
   );
 }

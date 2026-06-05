@@ -67,6 +67,43 @@ export function formatAadhaarGrouped(raw) {
   return parts.join("-");
 }
 
+/**
+ * Mask Aadhaar as XXXX-XXXX-XXXX.
+ * When revealLastDigit is true (typing with mask on), only the last entered digit stays visible;
+ * earlier digits are shown as X immediately.
+ */
+export function formatAadhaarMasked(raw, { revealLastDigit = false } = {}) {
+  const d = String(raw || "").replace(/\D/g, "").slice(0, 12);
+  if (!d) return "";
+  const display = d
+    .split("")
+    .map((digit, i) => (revealLastDigit && i === d.length - 1 ? digit : "X"))
+    .join("");
+  const g1 = display.slice(0, 4);
+  const g2 = display.slice(4, 8);
+  const g3 = display.slice(8, 12);
+  const parts = [g1];
+  if (d.length > 4) parts.push(g2);
+  if (d.length > 8) parts.push(g3);
+  return parts.join("-");
+}
+
+/** Same values as UK BOCW MemberRelation / member_relation on family records. */
+export const MEMBER_RELATION_OPTIONS = [
+  "Self",
+  "Wife",
+  "Father",
+  "Mother",
+  "Son",
+  "Daughter",
+];
+
+export const DEFAULT_MEMBER_RELATION = "Self";
+
+function readMemberRelation(raw) {
+  return String(raw.MemberRelation ?? raw.Relation ?? raw.member_relation ?? "").trim();
+}
+
 function normalizeFromLabourApiRow(raw, fallbackLabRegNo) {
   const labourId = String(
     raw.LabRegNo ?? raw.lab_reg_no ?? raw.labour_id ?? raw.LabourId ?? fallbackLabRegNo ?? "",
@@ -106,6 +143,7 @@ function normalizeFromLabourApiRow(raw, fallbackLabRegNo) {
     gender,
     address,
     mappedBarcode: "",
+    memberRelation: readMemberRelation(raw),
   };
 }
 
@@ -155,6 +193,7 @@ export function buildRegisterPatientBody(payload) {
     labour_id,
     kiosk_id,
     adhaar_number: String(payload?.aadhaar || "").trim(),
+    member_relation: String(payload?.memberRelation || "").trim(),
   };
 }
 
@@ -265,6 +304,7 @@ export async function submitLabourRegistration(payload) {
     labour_id: base.labour_id,
     kiosk_id: base.kiosk_id,
     adhaar_number: base.adhaar_number,
+    ...(base.member_relation ? { member_relation: base.member_relation } : {}),
     ...(liveLocationTrim ? { live_location: liveLocationTrim } : {}),
     photo: photoDataUrl,
   };

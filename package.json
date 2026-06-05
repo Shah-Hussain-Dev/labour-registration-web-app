@@ -9,11 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.4.0",
     "@zxing/browser": "^0.1.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-hook-form": "^7.77.0",
+    "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.14.1",
-    "react-webcam": "^7.2.0"
+    "react-webcam": "^7.2.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

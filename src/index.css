@@ -1117,6 +1117,26 @@ body {
   box-shadow: 0 0 0 3px var(--yh-focus-ring);
 }
 
+.input[aria-invalid="true"],
+.input--select[aria-invalid="true"],
+.input--textarea[aria-invalid="true"] {
+  border-color: var(--yh-danger);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--yh-danger) 40%, transparent);
+}
+
+.input[aria-invalid="true"]:focus,
+.input--select[aria-invalid="true"]:focus,
+.input--textarea[aria-invalid="true"]:focus {
+  border-color: var(--yh-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--yh-danger) 22%, transparent);
+}
+
+.input::placeholder,
+.input--textarea::placeholder {
+  color: color-mix(in srgb, var(--yh-muted) 88%, transparent);
+  opacity: 1;
+}
+
 .input--textarea {
   min-height: 3.65rem;
   resize: vertical;
@@ -1149,6 +1169,53 @@ body {
   min-width: 0;
 }
 
+.input-with-toggle {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.input--with-toggle {
+  padding-right: 2.85rem;
+}
+
+.input-toggle-btn {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--yh-muted);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.input-toggle-btn:focus-visible {
+  outline: 2px solid var(--yh-primary);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .input-toggle-btn:hover {
+    color: var(--yh-primary);
+    background: color-mix(in srgb, var(--yh-primary) 10%, transparent);
+  }
+}
+
+.input-toggle-btn[aria-pressed="true"] {
+  color: var(--yh-primary);
+}
+
 .form-grid {
   display: grid;
   gap: 1rem 1.25rem;
@@ -1166,28 +1233,54 @@ body {
   }
 }
 
-/* Email + address: stacked on small screens; side-by-side from tablet up (matches .form-grid breakpoint) */
-.form-row-email-address__inner {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  width: 100%;
+/* Labour registration: balanced rows on tablet+ */
+@media (min-width: 720px) {
+  .form-grid--labour .field--address {
+    grid-column: span 2;
+  }
+
+  .form-grid--labour .field--email {
+    grid-column: span 1;
+  }
 }
 
-@media (min-width: 720px) {
-  .form-row-email-address__inner {
-    flex-direction: row;
+@media (min-width: 1024px) {
+  .form-grid--labour {
+    gap: 1.1rem 1.5rem;
+  }
+
+  .form-grid--labour .geo-photo-field {
+    grid-column: 1 / span 2;
+    align-self: start;
+  }
+
+  .form-grid--labour .span-barcode {
+    grid-column: 3;
+    align-self: start;
+  }
+
+  .form-grid--labour .geo-photo-field .labour-live-photo-block {
+    display: flex;
+    flex-direction: column;
     align-items: flex-start;
-    gap: 1.25rem;
+    gap: 0.65rem;
+    max-width: 100%;
   }
 
-  .form-row-email-address__email {
-    flex: 1 1 0;
-    min-width: 0;
+  .form-grid--labour .geo-photo-field .labour-live-photo-block__thumb-wrap {
+    flex-shrink: 0;
+    width: 11.5rem;
+    max-width: 100%;
   }
 
-  .form-row-email-address__address {
-    flex: 2 1 0;
+  .form-grid--labour .geo-photo-field .labour-live-photo-block__loc,
+  .form-grid--labour .geo-photo-field .labour-live-photo-block__actions {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .form-grid--labour .geo-photo-field .labour-live-photo-block__actions {
+    flex: 0 0 auto;
     min-width: 0;
   }
 }
@@ -1563,17 +1656,21 @@ body {
 .btn-scan {
   width: 100%;
   margin-top: 0;
-  background: #3cb878;
+  background: var(--yh-text);
   color: #fff;
   font-weight: 600;
   min-height: var(--yh-tap-min);
-  background-image: linear-gradient(to right, #3cb878 0%, #517fa4 100%);
   border-radius: 10px;
+  box-shadow: none;
 }
 
 .btn-scan:hover:not(:disabled) {
-  filter: brightness(1.06);
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--yh-accent) 45%, transparent);
+  background: #2a2d3a;
+}
+
+.btn-scan:focus-visible {
+  outline: 2px solid var(--yh-text);
+  outline-offset: 2px;
 }
 
 .inline-spinner {
@@ -1882,7 +1979,7 @@ body {
 .labour-live-photo-block__thumb-wrap {
   position: relative;
   width: 100%;
-  max-width: 100%;
+  max-width: min(100%, 14rem);
   margin-inline: 0;
   aspect-ratio: 3 / 4;
   border-radius: 12px;
@@ -1891,6 +1988,12 @@ body {
   background: #000;
   line-height: 0;
   box-shadow: 0 2px 14px rgba(20, 22, 34, 0.08);
+}
+
+@media (min-width: 720px) {
+  .labour-live-photo-block__thumb-wrap {
+    max-width: 11.5rem;
+  }
 }
 
 .labour-live-photo-block__thumb {
