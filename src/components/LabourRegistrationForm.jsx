@@ -25,6 +25,7 @@ const LabourLivePhotoModal = lazy(() => import("./LabourLivePhotoModal.jsx"));
 
 const ENTRY_LOOKUP = "lookup";
 const ENTRY_MANUAL = "manual";
+const AADHAAR_PLACEHOLDER = "XXXX-XXXX-5522";
 
 function FieldError({ message, id }) {
   if (!message) return null;
@@ -532,7 +533,7 @@ export default function LabourRegistrationForm({ atmId = "" }) {
                     className="input input--with-toggle"
                     autoComplete="off"
                     maxLength={14}
-                    placeholder="XXXX-XXXX-XXXX"
+                    placeholder={AADHAAR_PLACEHOLDER}
                     value={aadhaarDisplayValue}
                     onFocus={() => setAadhaarFocused(true)}
                     onBlur={() => {
