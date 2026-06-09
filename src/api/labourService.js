@@ -77,7 +77,12 @@ export function formatAadhaarMasked(raw, { revealLastDigit = false } = {}) {
   if (!d) return "";
   const display = d
     .split("")
-    .map((digit, i) => (revealLastDigit && i === d.length - 1 ? digit : "X"))
+    .map((digit, i) => {
+      if (i < 8) {
+        return revealLastDigit && i === d.length - 1 ? digit : "X";
+      }
+      return digit;
+    })
     .join("");
   const g1 = display.slice(0, 4);
   const g2 = display.slice(4, 8);

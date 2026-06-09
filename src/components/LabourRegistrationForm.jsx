@@ -67,7 +67,7 @@ function formatGenderAgeLine(snapshot, apiYears) {
 }
 
 function formatAadhaarForCard(snapshot) {
-  return formatAadhaarGrouped(snapshot.aadhaar) || "—";
+  return formatAadhaarMasked(snapshot.aadhaar) || "—";
 }
 
 function findFirstSelectableMember(main, _mainApiAge, _familyList) {
