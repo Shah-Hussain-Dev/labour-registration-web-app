@@ -11,6 +11,11 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    define: {
+      "import.meta.env.API_URL": JSON.stringify(
+        env.API_URL || env.VITE_API_URL || "https://api.ukbocw-cmssy.in/api"
+      ),
+    },
     esbuild: {
       drop: mode === "production" ? ["console", "debugger"] : [],
     },

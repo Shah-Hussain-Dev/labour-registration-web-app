@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useState, useEffect } from "react";
 import { fetchAdditionalTests, markAdditionalTestsDone } from "../api/additionalTestsService.js";
 
 const BarcodeScanModal = lazy(() => import("./BarcodeScanModal.jsx"));
@@ -71,13 +71,10 @@ export default function ScanTestPanel() {
   const [error, setError] = useState("");
   const [markError, setMarkError] = useState("");
   const [lastLoadedCount, setLastLoadedCount] = useState(null);
-  const [selectedIds, setSelectedIds] = useState(() => new Set());
   /** Single-card mark API in flight (row id). */
   const [markPendingId, setMarkPendingId] = useState(null);
-  /** Batch submit (2+ checkboxes) in flight. */
-  const [markBatchPending, setMarkBatchPending] = useState(false);
 
-  const markBusy = markPendingId != null || markBatchPending;
+  const markBusy = markPendingId != null;
 
   const loadTests = useCallback(async (code) => {
     const trimmed = String(code ?? "").trim();
@@ -97,7 +94,6 @@ export default function ScanTestPanel() {
     setLoading(true);
     setTests([]);
     setLastLoadedCount(null);
-    setSelectedIds(new Set());
     try {
       const list = await fetchAdditionalTests(trimmed);
       const rows = list.filter(isValidTestRow).filter(isListedTestRow);
@@ -112,6 +108,56 @@ export default function ScanTestPanel() {
       setLoading(false);
     }
   }, []);
+
+  // Background polling to monitor report_url
+  useEffect(() => {
+    if (!barcode || tests.length === 0) return;
+
+    // Check if there is any pending test (not done and no report_url)
+    const hasPendingReport = tests.some((t) => !t.is_test_done && !t.report_url);
+    if (!hasPendingReport) return;
+
+    let active = true;
+    let timerId = null;
+
+    const poll = async () => {
+      try {
+        const list = await fetchAdditionalTests(barcode);
+        if (!active) return;
+        const rows = list.filter(isValidTestRow).filter(isListedTestRow);
+        rows.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+
+        // Check if anything actually changed before setting state to avoid unnecessary renders
+        const isSame = rows.length === tests.length && rows.every((row, i) => {
+          const prev = tests[i];
+          return prev &&
+            prev.id === row.id &&
+            prev.is_test_done === row.is_test_done &&
+            prev.report_url === row.report_url &&
+            prev.status === row.status;
+        });
+
+        if (!isSame) {
+          setTests(rows);
+        }
+      } catch (err) {
+        console.warn("Background poll failed:", err);
+      }
+
+      // Schedule next poll if still active and still has pending reports
+      if (active) {
+        timerId = setTimeout(poll, 2000); // Poll every 2 seconds
+      }
+    };
+
+    // Schedule the first poll
+    timerId = setTimeout(poll, 2000);
+
+    return () => {
+      active = false;
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [barcode, tests]);
 
   const onScanDetected = useCallback(
     (code) => {
@@ -130,53 +176,30 @@ export default function ScanTestPanel() {
 
   const markIds = useCallback(async (ids) => {
     setMarkError("");
-    const batch = ids.length >= 2;
-    if (batch) setMarkBatchPending(true);
-    else setMarkPendingId(ids[0] ?? null);
+    setMarkPendingId(ids[0] ?? null);
     try {
       await markAdditionalTestsDone(ids);
-      setTests((prev) => applyMarkedDone(prev, ids));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        for (const id of ids) next.delete(id);
-        return next;
-      });
+      // Immediately refetch list to show updated status/report_url from the API
+      if (barcode) {
+        const list = await fetchAdditionalTests(barcode);
+        const rows = list.filter(isValidTestRow).filter(isListedTestRow);
+        rows.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+        setTests(rows);
+      }
     } catch (e) {
       setMarkError(e?.message || "Could not mark tests complete.");
     } finally {
-      setMarkBatchPending(false);
       setMarkPendingId(null);
     }
-  }, []);
-
-  const toggleSelect = useCallback((id, done) => {
-    if (done || markBusy) return;
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-    setMarkError("");
-  }, [markBusy]);
-
-  const submitSelected = useCallback(() => {
-    const ids = Array.from(selectedIds);
-    if (ids.length < 2) return;
-    markIds(ids);
-  }, [markIds, selectedIds]);
+  }, [barcode]);
 
   const hasRows = tests.length > 0;
-  const multiSelected = selectedIds.size >= 2;
 
   return (
     <div className="scan-test-panel">
       <div className="form-card scan-test-panel__card">
-        <h1 className="form-card__title scan-test-panel__title">Scan and test</h1>
-        <p className="scan-test-panel__intro">
-          A patient barcode is required. Scan or type it, then load additional tests from the camp API. Rows with
-          status <strong>inactive</strong> are hidden; active and completed tests are shown.
-        </p>
+        <h1 className="form-card__title scan-test-panel__title">Scan and Test</h1>
+      
 
         <div className="field field--full">
           <label className="field-label" htmlFor="scan-test-barcode">
@@ -238,21 +261,13 @@ export default function ScanTestPanel() {
             {tests.map((t) => {
               const done = Boolean(t.is_test_done);
               const sc = statusChipClass(t.status);
-              const checked = selectedIds.has(t.id);
+              const hasReportUrl = typeof t.report_url === "string" && t.report_url.trim().length > 0;
+              const canSubmit = !done && hasReportUrl;
               return (
                 <li key={t.id} className={`scan-test-card${done ? " scan-test-card--done" : ""}`}>
                   <div className="scan-test-card__head">
                     <div className="scan-test-card__head-main">
-                      <label className="scan-test-card__check-label">
-                        <input
-                          type="checkbox"
-                          className="scan-test-card__checkbox"
-                          checked={checked}
-                          disabled={done || markBusy}
-                          onChange={() => toggleSelect(t.id, done)}
-                        />
-                        <span className="scan-test-card__name">{t.medical_service_name}</span>
-                      </label>
+                      <span className="scan-test-card__name">{t.medical_service_name}</span>
                     </div>
                     {done ? (
                       <span className="scan-test-card__status scan-test-card__status--completed">
@@ -271,12 +286,27 @@ export default function ScanTestPanel() {
                       <dt>Recorded</dt>
                       <dd>{formatWhen(t.created_at)}</dd>
                     </div>
+                    {hasReportUrl && (
+                      <div className="scan-test-card__row">
+                        <dt>Report</dt>
+                        <dd>
+                          <a
+                            href={t.report_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "var(--yh-primary)", textDecoration: "underline", fontWeight: "600" }}
+                          >
+                            View Report URL
+                          </a>
+                        </dd>
+                      </div>
+                    )}
                   </dl>
                   <div className="scan-test-card__foot">
                     <button
                       type="button"
                       className="btn btn-primary btn-block scan-test-card__complete"
-                      disabled={done || markBusy}
+                      disabled={!canSubmit || markBusy}
                       aria-busy={markPendingId === t.id}
                       onClick={() => markIds([t.id])}
                     >
@@ -285,8 +315,8 @@ export default function ScanTestPanel() {
                       ) : (
                         <ButtonWithSpinner
                           busy={markPendingId === t.id}
-                          busyLabel="Marking…"
-                          idleLabel="Mark complete"
+                          busyLabel="Submitting…"
+                          idleLabel="Mark as Completed"
                         />
                       )}
                     </button>
@@ -300,27 +330,6 @@ export default function ScanTestPanel() {
             <p className="field-error scan-test-list__mark-error" role="alert">
               {markError}
             </p>
-          ) : null}
-
-          {multiSelected ? (
-            <div className="scan-test-batch">
-              <p className="scan-test-batch__summary">
-                {selectedIds.size} tests selected
-              </p>
-              <button
-                type="button"
-                className="btn btn-primary btn-block scan-test-batch__submit"
-                disabled={markBusy}
-                aria-busy={markBatchPending}
-                onClick={submitSelected}
-              >
-                <ButtonWithSpinner
-                  busy={markBatchPending}
-                  busyLabel="Submitting…"
-                  idleLabel="Submit"
-                />
-              </button>
-            </div>
           ) : null}
         </section>
       ) : lastLoadedCount === 0 && !loading && !error ? (

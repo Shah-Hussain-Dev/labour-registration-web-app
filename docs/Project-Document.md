@@ -80,7 +80,7 @@ Staging	TBD	e.g. internal preview / UAT host
 Production	TBD	e.g. CDN / static host behind your domain
 Backend / API (application data): configured in code as:
 
-https://system.healthatm.com/api (see src/constants/healthAtmApiBase.js)
+configured via `import.meta.env.API_URL` (see [healthAtmApiBase.js](file:///d:/React%20Projects%20Yolo%20Health/labour-registration-prod/src/constants/healthAtmApiBase.js))
 Deployment process (fill in)
 Typical pattern for a Vite SPA (adapt to your pipeline):
 
@@ -100,7 +100,7 @@ Dev-only utilities	Proxies in Vite	Local dev can proxy HMS and Google Maps endpo
 8. API details
 Base URL(s)
 Usage	Base URL
-HealthATM / camp / user-app (main app API)	https://system.healthatm.com/api
+HealthATM / camp / user-app (main app API)	Dynamically configured via `API_URL` env variable
 Dev proxy: /yolo-hms-api → https://hms.yolohealth.in/api (local development only).
 
 Authentication
