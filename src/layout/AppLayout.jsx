@@ -45,6 +45,14 @@ export default function AppLayout({ atmId, onAtmOpen, blockingAtmModal }) {
               </BottomTabIcon>
               <span className="bottom-tab-bar__label">Registration</span>
             </NavLink>
+            <NavLink to={ROUTES.uploadReport} className={tabClassName}>
+              <BottomTabIcon>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </BottomTabIcon>
+              <span className="bottom-tab-bar__label">Upload report</span>
+            </NavLink>
             <NavLink to={ROUTES.scanTests} className={tabClassName}>
               <BottomTabIcon>
                 <path d="M3 7V5a2 2 0 0 1 2-2h2" />
@@ -54,14 +62,6 @@ export default function AppLayout({ atmId, onAtmOpen, blockingAtmModal }) {
                 <line x1="7" y1="12" x2="17" y2="12" />
               </BottomTabIcon>
               <span className="bottom-tab-bar__label">Scan and Test</span>
-            </NavLink>
-            <NavLink to={ROUTES.uploadReport} className={tabClassName}>
-              <BottomTabIcon>
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </BottomTabIcon>
-              <span className="bottom-tab-bar__label">Upload report</span>
             </NavLink>
           </div>
         </div>
