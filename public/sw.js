@@ -1,4 +1,4 @@
-const CACHE_NAME = "cmssy-portal-cache-v1";
+const CACHE_NAME = "cmssy-portal-cache-v2";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -39,6 +39,29 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // 1. Navigation requests (HTML page loads/refreshes) -> Network-First
+  // This ensures users always get the latest version of index.html when online.
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Offline fallback
+          return caches.match("/") || caches.match("/index.html");
+        })
+    );
+    return;
+  }
+
+  // 2. Static assets (JS, CSS, images) -> Cache-First
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -56,8 +79,8 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => {
-          // Offline fallback to home index
-          return caches.match("/");
+          // Offline static assets fallback (do nothing or return error)
+          return new Response("Asset offline", { status: 404, statusText: "Offline" });
         });
     })
   );
