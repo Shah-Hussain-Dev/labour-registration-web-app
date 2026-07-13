@@ -3,6 +3,10 @@
  * Base URL: {@link HEALTH_ATM_API_BASE_URL}
  */
 import { HEALTH_ATM_API_BASE_URL } from "../constants/healthAtmApiBase.js";
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat.js";
+
+dayjs.extend(customParseFormat);
 
 function apiRoot() {
   return HEALTH_ATM_API_BASE_URL;
@@ -109,13 +113,30 @@ function readMemberRelation(raw) {
   return String(raw.MemberRelation ?? raw.Relation ?? raw.member_relation ?? "").trim();
 }
 
+function formatDobToIso(dobStr) {
+  if (typeof dobStr !== "string") return "";
+  const clean = dobStr.trim();
+  if (!clean) return "";
+
+  let d = dayjs(clean, ["DD/MM/YYYY", "DD-MM-YYYY", "YYYY-MM-DD"], true);
+  if (!d.isValid()) {
+    d = dayjs(clean);
+  }
+
+  if (d.isValid()) {
+    return d.format("YYYY-MM-DD");
+  }
+
+  return clean;
+}
+
 function normalizeFromLabourApiRow(raw, fallbackLabRegNo) {
   const labourId = String(
     raw.LabRegNo ?? raw.lab_reg_no ?? raw.labour_id ?? raw.LabourId ?? fallbackLabRegNo ?? "",
   ).trim();
 
-  let dob = raw.Dob ?? raw.dob ?? raw.date_of_birth ?? "";
-  if (typeof dob === "string" && dob.includes("T")) dob = dob.slice(0, 10);
+  const dobRaw = raw.Dob ?? raw.dob ?? raw.date_of_birth ?? "";
+  const dob = formatDobToIso(dobRaw);
 
   const genderRaw = raw.Gender ?? raw.gender ?? "";
   const gl = String(genderRaw).trim().toLowerCase();
