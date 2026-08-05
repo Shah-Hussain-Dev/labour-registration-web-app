@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import Webcam from "react-webcam";
 import {
   composeGeoTaggedPhotoBlob,
+  compressPhotoDataUrl,
   fetchStaticMapForLocation,
   getGeoPosition,
   reverseGeocodeAddress,
@@ -97,7 +98,7 @@ export default function LabourLivePhotoModal({ open, onClose, onCaptured }) {
             dateStyle: "medium",
             timeStyle: "medium",
           });
-          const blob = await (await fetch(shot)).blob();
+          const blob = await compressPhotoDataUrl(shot);
           onCaptured(blob, {
             latitude: null,
             longitude: null,
@@ -135,13 +136,13 @@ export default function LabourLivePhotoModal({ open, onClose, onCaptured }) {
           audio={false}
           ref={webcamRef}
           screenshotFormat="image/jpeg"
-          screenshotQuality={0.92}
+          screenshotQuality={0.78}
           className="cam-fullscreen__video"
           videoConstraints={{
             facingMode,
             aspectRatio: { ideal: 3 / 4 },
-            width: { ideal: 1080, min: 540 },
-            height: { ideal: 1440, min: 720 },
+            width: { ideal: 720, min: 480 },
+            height: { ideal: 960, min: 640 },
           }}
           onUserMediaError={() =>
             setLocalError("Camera permission denied or no camera found.")

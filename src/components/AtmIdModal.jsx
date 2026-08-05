@@ -1,28 +1,40 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { normalizeAtmId } from "../constants/storage.js";
+import { isValidBarcodePrefix, normalizeAtmId, normalizeBarcodePrefix } from "../constants/storage.js";
 
 const KIOSK_ID_RE = /^[A-Za-z0-9\-]{3,32}$/;
 
 /**
  * First visit: blocking until ATM ID is saved. Change flow: can cancel to keep previous ID.
  */
-export default function AtmIdModal({ open, blocking, initialAtmId, onSave, onClose }) {
+export default function AtmIdModal({
+  open,
+  blocking,
+  initialAtmId,
+  initialBarcodePrefix = "",
+  onSave,
+  onClose,
+}) {
   const [value, setValue] = useState("");
+  const [barcodePrefix, setBarcodePrefix] = useState("");
   const [error, setError] = useState("");
+  const [prefixError, setPrefixError] = useState("");
 
   useEffect(() => {
     if (open) {
       setValue(normalizeAtmId(initialAtmId ?? ""));
+      setBarcodePrefix(normalizeBarcodePrefix(initialBarcodePrefix ?? ""));
       setError("");
+      setPrefixError("");
     }
-  }, [open, initialAtmId]);
+  }, [open, initialAtmId, initialBarcodePrefix]);
 
   if (!open) return null;
 
   function handleSubmit(e) {
     e.preventDefault();
     const t = normalizeAtmId(value);
+    const prefix = normalizeBarcodePrefix(barcodePrefix);
     if (!t) {
       setError("ATM ID is required.");
       return;
@@ -31,7 +43,11 @@ export default function AtmIdModal({ open, blocking, initialAtmId, onSave, onClo
       setError("Use 3–32 letters, digits, or hyphens (e.g. UKHA001).");
       return;
     }
-    onSave(t);
+    if (!isValidBarcodePrefix(prefix)) {
+      setPrefixError("Letters only (e.g. YH).");
+      return;
+    }
+    onSave({ atmId: t, barcodePrefix: prefix });
   }
 
   const content = (
@@ -73,6 +89,32 @@ export default function AtmIdModal({ open, blocking, initialAtmId, onSave, onClo
           {error ? (
             <p id="atm-id-err" className="field-error" role="alert">
               {error}
+            </p>
+          ) : null}
+          <label className="field-label atm-id-modal__prefix-label" htmlFor="barcode-prefix-input">
+            Barcode prefix <span className="field-label__optional">(optional)</span>
+          </label>
+          <input
+            id="barcode-prefix-input"
+            type="text"
+            className="input"
+            autoComplete="off"
+            value={barcodePrefix}
+            onChange={(e) => {
+              setBarcodePrefix(normalizeBarcodePrefix(e.target.value));
+              if (prefixError) setPrefixError("");
+            }}
+            aria-invalid={prefixError ? "true" : "false"}
+            aria-describedby={prefixError ? "barcode-prefix-err" : "barcode-prefix-hint"}
+            placeholder="e.g. YH"
+          />
+          <p id="barcode-prefix-hint" className="field-hint">
+            Letters only. When set, the registration form shows this prefix on the barcode field and
+            only accepts a numeric suffix.
+          </p>
+          {prefixError ? (
+            <p id="barcode-prefix-err" className="field-error" role="alert">
+              {prefixError}
             </p>
           ) : null}
           <div className={`modal-actions atm-id-modal__actions${blocking ? " atm-id-modal__actions--single" : ""}`}>

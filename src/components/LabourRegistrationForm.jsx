@@ -6,12 +6,14 @@ import {
   formatAadhaarGrouped,
   formatAadhaarMasked,
   MEMBER_RELATION_OPTIONS,
+  resolveRegistrationBarcode,
   submitLabourRegistration,
 } from "../api/labourService.js";
 import yoloLogoUrl from "../assets/logo.png";
 import {
-  completedYearsFromDobIso,
+  completedYearsFromDob,
   createLabourRegistrationSchema,
+  digitsToDobDisplay,
   getDefaultFormValues,
   getManualDefaultFormValues,
   MOBILE_DIGITS,
@@ -25,7 +27,13 @@ const LabourLivePhotoModal = lazy(() => import("./LabourLivePhotoModal.jsx"));
 
 const ENTRY_LOOKUP = "lookup";
 const ENTRY_MANUAL = "manual";
-const AADHAAR_PLACEHOLDER = "XXXX-XXXX-5522";
+const AADHAAR_PLACEHOLDER = "1234-5678-9012";
+const GENDER_OPTIONS = [
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+  { value: "other", label: "Other" },
+  { value: "prefer_not", label: "Prefer not to say" },
+];
 
 function FieldError({ message, id }) {
   if (!message) return null;
@@ -54,7 +62,7 @@ function genderAbbrev(formGender) {
 }
 
 function resolveCardAgeYears(snapshot, apiYears) {
-  const fromDob = completedYearsFromDobIso(snapshot.dob);
+  const fromDob = completedYearsFromDob(snapshot.dob);
   if (fromDob !== null) return fromDob;
   if (apiYears !== null && apiYears !== undefined && Number.isFinite(apiYears)) return apiYears;
   return null;
@@ -69,6 +77,43 @@ function formatGenderAgeLine(snapshot, apiYears) {
 
 function formatAadhaarForCard(snapshot) {
   return formatAadhaarMasked(snapshot.aadhaar) || "—";
+}
+
+function parseBarcodeNumericSuffix(fullBarcode, prefix) {
+  const full = String(fullBarcode ?? "").trim();
+  const p = String(prefix ?? "").trim();
+  if (!p) return cleanBarcodeWithoutPrefix(full);
+  if (full.toUpperCase().startsWith(p.toUpperCase())) {
+    return full.slice(p.length).replace(/\D/g, "");
+  }
+  return full.replace(/\D/g, "");
+}
+
+function cleanBarcodeWithoutPrefix(raw) {
+  return String(raw ?? "").replace(/[^A-Za-z0-9\-]/g, "");
+}
+
+function buildPrefixedBarcode(prefix, numericSuffix) {
+  const p = String(prefix ?? "").trim();
+  const digits = String(numericSuffix ?? "").replace(/\D/g, "");
+  if (!p) return digits;
+  return `${p}${digits}`;
+}
+
+function applyScannedBarcode(code, prefix) {
+  let cleaned = cleanBarcodeWithoutPrefix(code);
+  const p = String(prefix ?? "").trim();
+  if (!p) return cleaned;
+  if (cleaned.toUpperCase().startsWith(p.toUpperCase())) {
+    cleaned = cleaned.slice(p.length);
+  }
+  return buildPrefixedBarcode(p, cleaned.replace(/\D/g, ""));
+}
+
+function onPositiveNumberInputKeyDown(e) {
+  if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+    e.preventDefault();
+  }
 }
 
 function findFirstSelectableMember(main, _mainApiAge, _familyList) {
@@ -91,7 +136,7 @@ function scrollToField(fieldKey, labourIdInputId) {
   el?.focus?.();
 }
 
-export default function LabourRegistrationForm({ atmId = "" }) {
+export default function LabourRegistrationForm({ atmId = "", barcodePrefix = "" }) {
   const [entryMode, setEntryMode] = useState(ENTRY_LOOKUP);
   const [geoPhoto, setGeoPhoto] = useState(null);
   const geoPreviewRevokeRef = useRef(null);
@@ -108,11 +153,10 @@ export default function LabourRegistrationForm({ atmId = "" }) {
   const [mainCardAgeYears, setMainCardAgeYears] = useState(null);
   const [familyOptions, setFamilyOptions] = useState([]);
   const [selectedMemberKey, setSelectedMemberKey] = useState("main");
-  const [aadhaarVisible, setAadhaarVisible] = useState(false);
-  const [aadhaarFocused, setAadhaarFocused] = useState(false);
 
   const isManualEntry = entryMode === ENTRY_MANUAL;
   const labourIdInputId = isManualEntry ? "manual-labourId" : "labourId";
+  const hasBarcodePrefix = Boolean(String(barcodePrefix || "").trim());
 
   const {
     register,
@@ -131,14 +175,18 @@ export default function LabourRegistrationForm({ atmId = "" }) {
     mode: "onChange",
     reValidateMode: "onChange",
     resolver: (values, context, options) =>
-      zodResolver(createLabourRegistrationSchema({ requireRelation: isManualEntry }))(
-        values,
-        context,
-        options,
-      ),
+      zodResolver(
+        createLabourRegistrationSchema({
+          requireRelation: isManualEntry,
+          barcodePrefix,
+        }),
+      )(values, context, options),
   });
 
-  const aadhaarValue = watch("aadhaar");
+  const mappedBarcodeValue = watch("mappedBarcode");
+  const barcodeNumericSuffix = hasBarcodePrefix
+    ? parseBarcodeNumericSuffix(mappedBarcodeValue, barcodePrefix)
+    : mappedBarcodeValue;
 
   const setGeoPhotoSafe = useCallback((next) => {
     if (geoPreviewRevokeRef.current) {
@@ -177,8 +225,6 @@ export default function LabourRegistrationForm({ atmId = "" }) {
     setGeoPhotoSafe(null);
     setPreviewOpen(false);
     setPreviewValues(null);
-    setAadhaarVisible(false);
-    setAadhaarFocused(false);
   }
 
   function switchEntryMode(mode) {
@@ -189,37 +235,6 @@ export default function LabourRegistrationForm({ atmId = "" }) {
     if (mode === ENTRY_MANUAL) {
       reset(getManualDefaultFormValues());
     }
-  }
-
-  function onAadhaarKeyDown(e, currentValue, onChange) {
-    if (aadhaarVisible) return;
-
-    const digits = String(currentValue || "").replace(/\D/g, "");
-
-    if (e.key >= "0" && e.key <= "9") {
-      e.preventDefault();
-      if (digits.length < 12) {
-        onChange(digits + e.key);
-      }
-      return;
-    }
-
-    if (e.key === "Backspace") {
-      e.preventDefault();
-      onChange(digits.slice(0, -1));
-      return;
-    }
-
-    if (e.key === "Delete") {
-      e.preventDefault();
-      onChange("");
-    }
-  }
-
-  function onAadhaarPaste(e, onChange) {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 12);
-    if (pasted) onChange(pasted);
   }
 
   function selectMemberByKey(key) {
@@ -304,6 +319,7 @@ export default function LabourRegistrationForm({ atmId = "" }) {
     setPreviewValues({
       ...values,
       atmId,
+      mappedBarcode: resolveRegistrationBarcode(values.mappedBarcode, barcodePrefix),
       geoTaggedPhoto: geoPhoto.blob,
       geoPhotoMeta: geoPhoto.meta,
       geoTaggedPreviewUrl: geoPhoto.previewUrl,
@@ -352,7 +368,8 @@ export default function LabourRegistrationForm({ atmId = "" }) {
         email: previewValues.email,
         dob: previewValues.dob,
         gender: previewValues.gender,
-        mappedBarcode: previewValues.mappedBarcode,
+        mappedBarcode: resolveRegistrationBarcode(previewValues.mappedBarcode, barcodePrefix),
+        barcodePrefix,
         memberRelation: previewValues.memberRelation,
         address: String(previewValues.address || "").trim(),
         geoTaggedPhoto: previewValues.geoTaggedPhoto,
@@ -412,10 +429,6 @@ export default function LabourRegistrationForm({ atmId = "" }) {
     }
     return list;
   }, [mainMemberForm, mainCardAgeYears, familyOptions]);
-
-  const aadhaarDisplayValue = aadhaarVisible
-    ? formatAadhaarGrouped(aadhaarValue)
-    : formatAadhaarMasked(aadhaarValue, { revealLastDigit: aadhaarFocused });
 
   const labourDetailsGrid = (
     <div className="labour-form">
@@ -525,69 +538,26 @@ export default function LabourRegistrationForm({ atmId = "" }) {
             control={control}
             render={({ field, fieldState }) => (
               <>
-                <div className="input-with-toggle">
-                  <input
-                    id="aadhaar"
-                    type="text"
-                    inputMode="numeric"
-                    className="input input--with-toggle"
-                    autoComplete="off"
-                    maxLength={14}
-                    placeholder={AADHAAR_PLACEHOLDER}
-                    value={aadhaarDisplayValue}
-                    onFocus={() => setAadhaarFocused(true)}
-                    onBlur={() => {
-                      setAadhaarFocused(false);
-                      field.onBlur();
-                    }}
-                    onKeyDown={(e) => onAadhaarKeyDown(e, field.value, field.onChange)}
-                    onPaste={(e) => onAadhaarPaste(e, field.onChange)}
-                    onChange={(e) => {
-                      if (aadhaarVisible) {
-                        field.onChange(e.target.value.replace(/\D/g, "").slice(0, 12));
-                      }
-                    }}
-                    aria-invalid={fieldState.invalid ? "true" : "false"}
-                  />
-                  <button
-                    type="button"
-                    className="input-toggle-btn"
-                    onClick={() => setAadhaarVisible((v) => !v)}
-                    aria-label={aadhaarVisible ? "Hide Aadhaar number" : "Show Aadhaar number"}
-                    aria-pressed={aadhaarVisible}
-                    title={aadhaarVisible ? "Hide Aadhaar" : "Show Aadhaar"}
-                  >
-                    {aadhaarVisible ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-                        <path
-                          d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"
-                          stroke="currentColor"
-                          strokeWidth="1.75"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.75" />
-                        <path
-                          d="m4 4 16 16"
-                          stroke="currentColor"
-                          strokeWidth="1.75"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-                        <path
-                          d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"
-                          stroke="currentColor"
-                          strokeWidth="1.75"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.75" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
+                <input
+                  id="aadhaar"
+                  type="text"
+                  inputMode="numeric"
+                  className="input"
+                  autoComplete="off"
+                  maxLength={14}
+                  placeholder={AADHAAR_PLACEHOLDER}
+                  value={formatAadhaarGrouped(field.value)}
+                  onBlur={field.onBlur}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 12);
+                    field.onChange(pasted);
+                  }}
+                  onChange={(e) => {
+                    field.onChange(e.target.value.replace(/\D/g, "").slice(0, 12));
+                  }}
+                  aria-invalid={fieldState.invalid ? "true" : "false"}
+                />
                 <FieldError message={fieldState.error?.message} />
               </>
             )}
@@ -596,35 +566,65 @@ export default function LabourRegistrationForm({ atmId = "" }) {
 
         <div className="field field--dob">
           <label className="field-label" htmlFor="dob">
-            Date of birth <span className="req">*</span>
+            Date of birth <span className="field-label__format">(dd-mm-yyyy)</span>{" "}
+            <span className="req">*</span>
           </label>
-          <input
-            id="dob"
-            type="date"
-            className="input"
-            aria-invalid={errors.dob ? "true" : "false"}
-            aria-describedby={errors.dob ? "dob-err" : undefined}
-            {...register("dob")}
+          <Controller
+            name="dob"
+            control={control}
+            render={({ field, fieldState }) => (
+              <>
+                <input
+                  id="dob"
+                  type="text"
+                  inputMode="numeric"
+                  className="input"
+                  autoComplete="bday"
+                  placeholder="dd-mm-yyyy"
+                  maxLength={10}
+                  value={field.value ?? ""}
+                  onBlur={field.onBlur}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 8);
+                    field.onChange(digitsToDobDisplay(pasted));
+                  }}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 8);
+                    field.onChange(digitsToDobDisplay(digits));
+                  }}
+                  aria-invalid={fieldState.invalid ? "true" : "false"}
+                  aria-describedby={fieldState.error ? "dob-err" : undefined}
+                />
+                <FieldError id="dob-err" message={fieldState.error?.message} />
+              </>
+            )}
           />
-          <FieldError id="dob-err" message={errors.dob?.message} />
         </div>
 
         <div className="field field--gender">
-          <label className="field-label" htmlFor="gender">
+          <span className="field-label" id="gender-label">
             Gender <span className="req">*</span>
-          </label>
-          <select
-            id="gender"
-            className="input input--select"
+          </span>
+          <div
+            className="gender-radios"
+            role="radiogroup"
+            aria-labelledby="gender-label"
             aria-invalid={errors.gender ? "true" : "false"}
-            {...register("gender")}
           >
-            <option value="">Select gender</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-            <option value="prefer_not">Prefer not to say</option>
-          </select>
+            {GENDER_OPTIONS.map((opt) => (
+              <label key={opt.value} htmlFor={`gender-${opt.value}`} className="gender-radios__option">
+                <input
+                  id={`gender-${opt.value}`}
+                  type="radio"
+                  className="gender-radios__input"
+                  value={opt.value}
+                  {...register("gender")}
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
           <FieldError message={errors.gender?.message} />
         </div>
 
@@ -731,23 +731,56 @@ export default function LabourRegistrationForm({ atmId = "" }) {
           <label className="field-label" htmlFor="mappedBarcode">
             Barcode <span className="req">*</span>
           </label>
-          <input
-            id="mappedBarcode"
-            type="text"
-            className="input"
-            autoComplete="off"
-            maxLength={64}
-            enterKeyHint="done"
-            placeholder="Enter or scan barcode"
-            aria-invalid={errors.mappedBarcode ? "true" : "false"}
-            aria-required="true"
-            {...register("mappedBarcode", {
-              onChange: (e) => {
-                const cleaned = e.target.value.replace(/[^A-Za-z0-9\-]/g, "").slice(0, 64);
-                setValue("mappedBarcode", cleaned, { shouldValidate: true, shouldDirty: true });
-              },
-            })}
-          />
+          {hasBarcodePrefix ? (
+            <div className="input-with-prefix">
+              <span className="input-prefix" aria-hidden>
+                {barcodePrefix}
+              </span>
+              <input
+                id="mappedBarcode"
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                className="input input--with-prefix"
+                autoComplete="off"
+                enterKeyHint="done"
+                placeholder="Enter barcode number"
+                aria-invalid={errors.mappedBarcode ? "true" : "false"}
+                aria-required="true"
+                value={barcodeNumericSuffix}
+                onKeyDown={onPositiveNumberInputKeyDown}
+                onChange={(e) => {
+                  const digits = String(e.target.value ?? "").replace(/\D/g, "");
+                  const nextBarcode = digits
+                    ? buildPrefixedBarcode(barcodePrefix, digits.replace(/^0+/, "") || "")
+                    : barcodePrefix;
+                  setValue("mappedBarcode", nextBarcode, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
+                }}
+              />
+            </div>
+          ) : (
+            <input
+              id="mappedBarcode"
+              type="text"
+              className="input"
+              autoComplete="off"
+              enterKeyHint="done"
+              placeholder="Enter or scan barcode"
+              aria-invalid={errors.mappedBarcode ? "true" : "false"}
+              aria-required="true"
+              value={mappedBarcodeValue ?? ""}
+              {...register("mappedBarcode", {
+                onChange: (e) => {
+                  const cleaned = cleanBarcodeWithoutPrefix(e.target.value);
+                  setValue("mappedBarcode", cleaned, { shouldValidate: true, shouldDirty: true });
+                },
+              })}
+            />
+          )}
           <FieldError message={errors.mappedBarcode?.message} />
           <div className="barcode-actions">
             <button type="button" className="btn btn-scan" onClick={() => setBarcodeScanOpen(true)}>
@@ -769,29 +802,37 @@ export default function LabourRegistrationForm({ atmId = "" }) {
       >
         <h1 className="form-card__title">Labour registration</h1>
 
-        <div className="reg-mode-tabs" role="tablist" aria-label="Registration method">
-          <button
-            type="button"
-            role="tab"
-            id="reg-tab-lookup"
-            aria-selected={!isManualEntry}
-            aria-controls="reg-panel-lookup"
-            className={`reg-mode-tabs__tab${!isManualEntry ? " reg-mode-tabs__tab--active" : ""}`}
-            onClick={() => switchEntryMode(ENTRY_LOOKUP)}
+        <div className="reg-mode-radios" role="radiogroup" aria-label="Registration method">
+          <label
+            htmlFor="reg-mode-lookup"
+            className={`reg-mode-radios__option${!isManualEntry ? " reg-mode-radios__option--selected" : ""}`}
           >
+            <input
+              id="reg-mode-lookup"
+              type="radio"
+              name="entryMode"
+              className="reg-mode-radios__input"
+              value={ENTRY_LOOKUP}
+              checked={!isManualEntry}
+              onChange={() => switchEntryMode(ENTRY_LOOKUP)}
+            />
             Lookup by Labour ID
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="reg-tab-manual"
-            aria-selected={isManualEntry}
-            aria-controls="reg-panel-manual"
-            className={`reg-mode-tabs__tab${isManualEntry ? " reg-mode-tabs__tab--active" : ""}`}
-            onClick={() => switchEntryMode(ENTRY_MANUAL)}
+          </label>
+          <label
+            htmlFor="reg-mode-manual"
+            className={`reg-mode-radios__option${isManualEntry ? " reg-mode-radios__option--selected" : ""}`}
           >
+            <input
+              id="reg-mode-manual"
+              type="radio"
+              name="entryMode"
+              className="reg-mode-radios__input"
+              value={ENTRY_MANUAL}
+              checked={isManualEntry}
+              onChange={() => switchEntryMode(ENTRY_MANUAL)}
+            />
             Manual registration
-          </button>
+          </label>
         </div>
 
         {!isManualEntry ? (
@@ -949,7 +990,7 @@ export default function LabourRegistrationForm({ atmId = "" }) {
             open
             onClose={() => setBarcodeScanOpen(false)}
             onDetected={(code) => {
-              const cleaned = String(code).replace(/[^A-Za-z0-9\-]/g, "").slice(0, 64);
+              const cleaned = applyScannedBarcode(code, barcodePrefix);
               setValue("mappedBarcode", cleaned, { shouldValidate: true, shouldDirty: true });
               setBarcodeScanOpen(false);
             }}

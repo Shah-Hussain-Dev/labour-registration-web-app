@@ -133,8 +133,8 @@ export async function fetchStaticMapForLocation(lat, lng) {
   const params = new URLSearchParams({
     center: `${lat},${lng}`,
     zoom: "16",
-    size: "280x280",
-    scale: "2",
+    size: "160x160",
+    scale: "1",
     maptype: "roadmap",
     markers: `color:red|${lat},${lng}`,
   });
@@ -148,9 +148,45 @@ export async function fetchStaticMapForLocation(lat, lng) {
   }
 }
 
-/** Portrait 3:4 — tall frame; footer uses ~30% height with fonts/map scaled to canvas width. */
-const OUTPUT_PORTRAIT_W = 1080;
+/** Portrait 3:4 output — tuned for registration uploads (smaller file size). */
+export const GEO_PHOTO_MAX_WIDTH = 720;
+export const GEO_PHOTO_JPEG_QUALITY = 0.72;
+
+const OUTPUT_PORTRAIT_W = GEO_PHOTO_MAX_WIDTH;
 const OUTPUT_PORTRAIT_H = Math.round((OUTPUT_PORTRAIT_W * 4) / 3);
+const OUTPUT_JPEG_QUALITY = GEO_PHOTO_JPEG_QUALITY;
+
+/**
+ * Resize and re-encode a camera JPEG data URL.
+ * @param {string} dataUrl
+ * @param {{ maxWidth?: number, quality?: number }} [options]
+ * @returns {Promise<Blob>}
+ */
+export async function compressPhotoDataUrl(dataUrl, options = {}) {
+  const maxWidth = options.maxWidth ?? GEO_PHOTO_MAX_WIDTH;
+  const quality = options.quality ?? GEO_PHOTO_JPEG_QUALITY;
+  const img = await loadImage(dataUrl);
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  if (!iw || !ih) {
+    throw new Error("Could not read camera photo.");
+  }
+  const scale = Math.min(1, maxWidth / iw);
+  const cw = Math.max(1, Math.round(iw * scale));
+  const ch = Math.max(1, Math.round(ih * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = cw;
+  canvas.height = ch;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, cw, ch);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Could not compress image"))),
+      "image/jpeg",
+      quality,
+    );
+  });
+}
 
 /**
  * Geo-tagged JPEG: portrait 3:4, large readable geo strip (map + Lat/Lng, accuracy, time, address).
@@ -286,7 +322,7 @@ export async function composeGeoTaggedPhotoBlob(photoDataUrl, meta) {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("Could not encode image"))),
       "image/jpeg",
-      0.9,
+      OUTPUT_JPEG_QUALITY,
     );
   });
 }

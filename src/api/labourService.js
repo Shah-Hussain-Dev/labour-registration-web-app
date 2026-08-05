@@ -3,6 +3,8 @@
  * Base URL: {@link HEALTH_ATM_API_BASE_URL}
  */
 import { HEALTH_ATM_API_BASE_URL } from "../constants/healthAtmApiBase.js";
+import { normalizeBarcodePrefix } from "../constants/storage.js";
+import { dobDisplayToIso, dobIsoToDisplay } from "../validation/labourRegistrationSchema.js";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat.js";
 
@@ -72,9 +74,9 @@ export function formatAadhaarGrouped(raw) {
 }
 
 /**
- * Mask Aadhaar as XXXX-XXXX-XXXX.
+ * Mask Aadhaar as ••••-••••-1234 (last four digits visible).
  * When revealLastDigit is true (typing with mask on), only the last entered digit stays visible;
- * earlier digits are shown as X immediately.
+ * earlier digits are masked immediately.
  */
 export function formatAadhaarMasked(raw, { revealLastDigit = false } = {}) {
   const d = String(raw || "").replace(/\D/g, "").slice(0, 12);
@@ -83,7 +85,7 @@ export function formatAadhaarMasked(raw, { revealLastDigit = false } = {}) {
     .split("")
     .map((digit, i) => {
       if (i < 8) {
-        return revealLastDigit && i === d.length - 1 ? digit : "X";
+        return revealLastDigit && i === d.length - 1 ? digit : "•";
       }
       return digit;
     })
@@ -136,7 +138,8 @@ function normalizeFromLabourApiRow(raw, fallbackLabRegNo) {
   ).trim();
 
   const dobRaw = raw.Dob ?? raw.dob ?? raw.date_of_birth ?? "";
-  const dob = formatDobToIso(dobRaw);
+  const dobIso = formatDobToIso(dobRaw);
+  const dob = dobIso ? dobIsoToDisplay(dobIso) : "";
 
   const genderRaw = raw.Gender ?? raw.gender ?? "";
   const gl = String(genderRaw).trim().toLowerCase();
@@ -204,18 +207,28 @@ function normalizeFromFamilyApiRow(raw, fallbackLabRegNo) {
   return normalizeFromLabourApiRow(pseudo, fallbackLabRegNo);
 }
 
+/** Combine optional letter prefix with mapped barcode before API submit. */
+export function resolveRegistrationBarcode(mappedBarcode, barcodePrefix = "") {
+  const prefix = normalizeBarcodePrefix(barcodePrefix);
+  const raw = String(mappedBarcode ?? "").trim();
+  if (!prefix) return raw;
+  if (raw.toUpperCase().startsWith(prefix)) return raw;
+  const suffix = raw.replace(/\D/g, "");
+  return `${prefix}${suffix}`;
+}
+
 export function buildRegisterPatientBody(payload) {
   const kiosk_id = String(payload?.atmId || "").trim();
   const labour_id = String(payload?.labourId || "").trim();
   const mobile = normalizeMobileForApi(payload?.countryCode, payload?.mobile);
   return {
     name: String(payload?.name || "").trim(),
-    date_of_birth: String(payload?.dob || "").trim(),
+    date_of_birth: dobDisplayToIso(payload?.dob) || String(payload?.dob || "").trim(),
     address: String(payload?.address || "").trim(),
     gender: mapGenderForApi(payload?.gender),
     mobile,
     email: String(payload?.email || "").trim(),
-    barcode: String(payload?.mappedBarcode || "").trim(),
+    barcode: resolveRegistrationBarcode(payload?.mappedBarcode, payload?.barcodePrefix),
     labour_id,
     kiosk_id,
     adhaar_number: String(payload?.aadhaar || "").trim(),

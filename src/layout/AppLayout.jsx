@@ -26,12 +26,12 @@ function tabClassName({ isActive }) {
   return `bottom-tab-bar__tab${isActive ? " bottom-tab-bar__tab--active" : ""}`;
 }
 
-export default function AppLayout({ atmId, onAtmOpen, blockingAtmModal }) {
+export default function AppLayout({ atmId, barcodePrefix = "", onAtmOpen, blockingAtmModal }) {
   return (
     <div className="app-shell" inert={blockingAtmModal ? true : undefined}>
       <SiteHeader atmId={atmId} onAtmClick={onAtmOpen} />
       <main className="site-main site-main--bottom-tabs" id="main-content">
-        <Outlet context={{ atmId }} />
+        <Outlet context={{ atmId, barcodePrefix }} />
       </main>
       <nav className="bottom-tab-bar" aria-label="Primary">
         <div className="bottom-tab-bar__inner">

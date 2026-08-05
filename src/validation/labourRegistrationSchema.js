@@ -6,7 +6,7 @@ export const NAME_MAX = 150;
 export const ADDRESS_MAX = 500;
 
 const LABOUR_ID_RE = /^[\dA-Za-z\-]{4,32}$/;
-const BARCODE_RE = /^[A-Za-z0-9\-]{3,64}$/;
+const BARCODE_RE = /^[A-Za-z0-9\-]+$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const GENDER_VALUES = ["male", "female", "other", "prefer_not"];
 const NAME_NO_DIGITS_RE = /^[^\d]*$/;
@@ -26,15 +26,54 @@ export function completedYearsFromDobIso(iso) {
   return age;
 }
 
-export function validateDob(iso) {
-  if (!String(iso || "").trim()) return "Date of birth is required";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "Enter a valid date";
-  const d = new Date(`${iso}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return "Invalid date";
+export const DOB_DISPLAY_RE = /^(\d{2})-(\d{2})-(\d{4})$/;
+
+/** Format up to 8 digits as dd-mm-yyyy while typing. */
+export function digitsToDobDisplay(digits) {
+  const d = String(digits || "").replace(/\D/g, "").slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}-${d.slice(2)}`;
+  return `${d.slice(0, 2)}-${d.slice(2, 4)}-${d.slice(4)}`;
+}
+
+export function dobDisplayToIso(display) {
+  const m = String(display || "")
+    .trim()
+    .match(DOB_DISPLAY_RE);
+  if (!m) return "";
+  return `${m[3]}-${m[2]}-${m[1]}`;
+}
+
+export function dobIsoToDisplay(iso) {
+  const m = String(iso || "")
+    .trim()
+    .match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return "";
+  return `${m[3]}-${m[2]}-${m[1]}`;
+}
+
+export function completedYearsFromDob(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const iso = DOB_DISPLAY_RE.test(raw) ? dobDisplayToIso(raw) : raw;
+  return completedYearsFromDobIso(iso);
+}
+
+export function validateDob(display) {
+  const trimmed = String(display || "").trim();
+  if (!trimmed) return "Date of birth is required";
+  if (!DOB_DISPLAY_RE.test(trimmed)) return "Use dd-mm-yyyy format";
+  const iso = dobDisplayToIso(trimmed);
+  const [y, mo, d] = iso.split("-").map(Number);
+  const dt = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(dt.getTime())) return "Invalid date";
+  if (dt.getFullYear() !== y || dt.getMonth() + 1 !== mo || dt.getDate() !== d) {
+    return "Invalid date";
+  }
   const today = new Date();
   today.setHours(23, 59, 59, 999);
-  if (d > today) return "Date of birth cannot be in the future";
-  if (completedYearsFromDobIso(iso) === null) return "Invalid date";
+  if (dt > today) return "Date of birth cannot be in the future";
+  if (y < 1900 || y > today.getFullYear()) return "Enter a valid year";
   return "";
 }
 
@@ -84,7 +123,8 @@ export function getManualDefaultFormValues() {
  * @param {{ requireRelation?: boolean }} options
  */
 export function createLabourRegistrationSchema(options = {}) {
-  const { requireRelation = false } = options;
+  const { requireRelation = false, barcodePrefix = "" } = options;
+  const normalizedPrefix = String(barcodePrefix || "").trim().toUpperCase();
 
   return z
     .object({
@@ -129,7 +169,7 @@ export function createLabourRegistrationSchema(options = {}) {
         .string()
         .trim()
         .min(1, "Barcode is required")
-        .regex(BARCODE_RE, "Use 3–64 characters: letters, digits, or hyphens"),
+        .regex(BARCODE_RE, "Use letters, digits, or hyphens"),
       memberRelation: z.string().default(""),
     })
     .superRefine((data, ctx) => {
@@ -188,6 +228,26 @@ export function createLabourRegistrationSchema(options = {}) {
           message: mobileErr,
           path: ["mobile"],
         });
+      }
+
+      if (normalizedPrefix) {
+        const full = String(data.mappedBarcode || "").trim();
+        if (!full.toUpperCase().startsWith(normalizedPrefix)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Enter the barcode number after the prefix",
+            path: ["mappedBarcode"],
+          });
+          return;
+        }
+        const suffix = full.slice(normalizedPrefix.length);
+        if (!/^[1-9]\d*$/.test(suffix)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Enter a positive number after the prefix",
+            path: ["mappedBarcode"],
+          });
+        }
       }
     });
 }

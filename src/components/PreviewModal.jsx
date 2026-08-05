@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { formatAadhaarMasked } from "../api/labourService.js";
+import { formatAadhaarGrouped } from "../api/labourService.js";
 
 export default function PreviewModal({ open, values, onBack, onConfirm, submitting }) {
   if (!open || !values) return null;
@@ -11,18 +11,7 @@ export default function PreviewModal({ open, values, onBack, onConfirm, submitti
     prefer_not: "Prefer not to say",
   }[values.gender] || values.gender || "—";
 
-  let dobDisplay = values.dob || "—";
-  if (values.dob && /^\d{4}-\d{2}-\d{2}$/.test(values.dob)) {
-    const [y, m, d] = values.dob.split("-");
-    const dt = new Date(Number(y), Number(m) - 1, Number(d));
-    if (!Number.isNaN(dt.getTime())) {
-      dobDisplay = dt.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    }
-  }
+  const dobDisplay = values.dob || "—";
 
   const rows = [
     ["ATM ID", values.atmId || "—"],
@@ -30,7 +19,7 @@ export default function PreviewModal({ open, values, onBack, onConfirm, submitti
     ...(values.memberRelation ? [["Relation", values.memberRelation]] : []),
     ["Name", values.name],
     ["Mobile", `${values.countryCode || ""} ${values.mobile || ""}`.trim()],
-    ["Aadhaar", formatAadhaarMasked(values.aadhaar) || "—"],
+    ["Aadhaar", formatAadhaarGrouped(values.aadhaar) || "—"],
     ["Email", values.email || "—"],
     ["Address", String(values.address || "").trim() || "—"],
     ["Date of birth", dobDisplay],

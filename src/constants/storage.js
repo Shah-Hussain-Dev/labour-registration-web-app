@@ -1,11 +1,28 @@
 export const ATM_ID_STORAGE_KEY = "yolohealth_atm_id";
+export const BARCODE_PREFIX_STORAGE_KEY = "yolohealth_barcode_prefix";
 
 /** Barcode login session for Upload report (`authToken`, `profile`, `barcode`). Cleared on sign out only. */
 export const REPORT_UPLOAD_SESSION_KEY = "yolohealth_report_upload_session";
 
+const BARCODE_PREFIX_RE = /^[A-Z]+$/;
+
 /** Trim and uppercase for kiosk / ATM ID display and API. */
 export function normalizeAtmId(id) {
   return String(id ?? "").trim().toUpperCase();
+}
+
+/** Trim, uppercase, and keep letters only for optional registration barcode prefix. */
+export function normalizeBarcodePrefix(prefix) {
+  return String(prefix ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "");
+}
+
+export function isValidBarcodePrefix(prefix) {
+  const normalized = normalizeBarcodePrefix(prefix);
+  if (!normalized) return true;
+  return BARCODE_PREFIX_RE.test(normalized);
 }
 
 /**

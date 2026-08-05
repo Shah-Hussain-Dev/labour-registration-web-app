@@ -6,7 +6,7 @@ import AppLayout from "./layout/AppLayout.jsx";
 import RegistrationPage from "./pages/RegistrationPage.jsx";
 import ScanTestPage from "./pages/ScanTestPage.jsx";
 import UploadReportPage from "./pages/UploadReportPage.jsx";
-import { ATM_ID_STORAGE_KEY, normalizeAtmId } from "./constants/storage.js";
+import { ATM_ID_STORAGE_KEY, BARCODE_PREFIX_STORAGE_KEY, normalizeAtmId, normalizeBarcodePrefix } from "./constants/storage.js";
 
 function readStoredAtmId() {
   if (typeof window === "undefined") return "";
@@ -17,18 +17,31 @@ function readStoredAtmId() {
   }
 }
 
+function readStoredBarcodePrefix() {
+  if (typeof window === "undefined") return "";
+  try {
+    return normalizeBarcodePrefix(localStorage.getItem(BARCODE_PREFIX_STORAGE_KEY) ?? "");
+  } catch {
+    return "";
+  }
+}
+
 export default function App() {
   const [atmId, setAtmId] = useState(readStoredAtmId);
+  const [barcodePrefix, setBarcodePrefix] = useState(readStoredBarcodePrefix);
   const [atmModalOpen, setAtmModalOpen] = useState(() => !readStoredAtmId());
 
-  const handleAtmSave = useCallback((id) => {
-    const normalized = normalizeAtmId(id);
+  const handleAtmSave = useCallback(({ atmId: nextAtmId, barcodePrefix: nextBarcodePrefix }) => {
+    const normalizedAtm = normalizeAtmId(nextAtmId);
+    const normalizedPrefix = normalizeBarcodePrefix(nextBarcodePrefix);
     try {
-      localStorage.setItem(ATM_ID_STORAGE_KEY, normalized);
+      localStorage.setItem(ATM_ID_STORAGE_KEY, normalizedAtm);
+      localStorage.setItem(BARCODE_PREFIX_STORAGE_KEY, normalizedPrefix);
     } catch {
       /* storage full / private mode */
     }
-    setAtmId(normalized);
+    setAtmId(normalizedAtm);
+    setBarcodePrefix(normalizedPrefix);
     setAtmModalOpen(false);
   }, []);
 
@@ -41,6 +54,7 @@ export default function App() {
           element={
             <AppLayout
               atmId={atmId}
+              barcodePrefix={barcodePrefix}
               onAtmOpen={() => setAtmModalOpen(true)}
               blockingAtmModal={blockingAtmModal}
             />
@@ -56,6 +70,7 @@ export default function App() {
         open={atmModalOpen}
         blocking={blockingAtmModal}
         initialAtmId={atmId}
+        initialBarcodePrefix={barcodePrefix}
         onSave={handleAtmSave}
         onClose={() => setAtmModalOpen(false)}
       />
